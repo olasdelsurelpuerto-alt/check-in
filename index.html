@@ -111,6 +111,7 @@
   button.ghost{ background:#efe2cb; color:var(--ink); flex:0 0 38%; box-shadow:none; }
   button.act:disabled{ opacity:.5; box-shadow:none; }
   #status{ font-size:13px; padding:11px 13px; border-radius:12px; background:#fff; border:1px solid var(--line); margin-top:12px; min-height:20px; color:var(--ink); }
+  #status:empty{ display:none; }
   #status.ok{ background:#eaf7ef; border-color:#bfe0c8; } #status.warn{ background:#fff4e3; border-color:#f0c47a; }
   .review .row{ display:flex; justify-content:space-between; gap:12px; padding:11px 0; border-bottom:1px solid var(--line); font-size:14px; }
   .review .row:last-child{ border-bottom:0; }
@@ -321,7 +322,7 @@ function flag(iso){ return iso.replace(/./g,c=>String.fromCodePoint(127397+c.cha
 const T={
  es:{priv:"La verificación ocurre solo en tu teléfono. Ninguna imagen se envía ni se guarda.",
   scan_h:"Escanea el código de tu documento",scan_sub:"El código son las 2-3 líneas con «<<<» en la parte inferior de tu pasaporte o DNI.",
-  guide:"Encuádralo dentro del recuadro.",start:"Iniciar escáner",manual:"Rellenar a mano",reading:"Leyendo… mantén el documento firme",readok:"✓ Documento leído",
+  guide:"Encuádralo dentro del recuadro.",start:"Iniciar escáner",manual:"Rellenar a mano",reading:"Leyendo… mantén el documento firme",readok:"✓ Documento leído",loading:"Preparando el escáner…",
   cf_h:"Confirma tus datos",cf_sub:"Leídos del documento — corrige si hace falta.",cf_card:"✓ Leído del documento",
   nombre:"Nombre",ap1:"Primer apellido",ap2:"Segundo apellido",sexo:"Sexo",dob:"Fecha de nacimiento",
   nac:"Nacionalidad",tdoc:"Tipo de documento",ndoc:"Número de documento",
@@ -338,7 +339,7 @@ const T={
   sel:"Selecciona…",lockhint:"🔒 Datos leídos y verificados del documento (3 lecturas coincidentes). Si algo no coincide, vuelve atrás y escanea de nuevo."},
  en:{priv:"Scanning happens only on your phone. No image is sent or stored.",
   scan_h:"Scan your document's code",scan_sub:"The code is the 2-3 lines with «<<<» at the bottom of your passport or ID.",
-  guide:"Fit it inside the frame.",start:"Start scanner",manual:"Fill in manually",reading:"Reading… hold the document steady",readok:"✓ Document read",
+  guide:"Fit it inside the frame.",start:"Start scanner",manual:"Fill in manually",reading:"Reading… hold the document steady",readok:"✓ Document read",loading:"Preparing the scanner…",
   cf_h:"Confirm your details",cf_sub:"Read from the document — edit if needed.",cf_card:"✓ Read from document",
   nombre:"First name",ap1:"Surname",ap2:"Second surname",sexo:"Sex",dob:"Date of birth",
   nac:"Nationality",tdoc:"Document type",ndoc:"Document number",
@@ -355,7 +356,7 @@ const T={
   sel:"Select…",lockhint:"🔒 Data read and verified from your document (3 matching reads). If something is wrong, go back and scan again."},
  fr:{priv:"La vérification a lieu uniquement sur votre téléphone. Aucune image n'est envoyée ni conservée.",
   scan_h:"Scannez le code de votre document",scan_sub:"Le code, ce sont les 2-3 lignes avec « <<< » en bas de votre passeport ou carte d'identité.",
-  guide:"Cadrez-le dans le rectangle.",start:"Démarrer le scanner",manual:"Saisir manuellement",reading:"Lecture… maintenez le document immobile",readok:"✓ Document lu",
+  guide:"Cadrez-le dans le rectangle.",start:"Démarrer le scanner",manual:"Saisir manuellement",reading:"Lecture… maintenez le document immobile",readok:"✓ Document lu",loading:"Préparation du scanner…",
   cf_h:"Confirmez vos données",cf_sub:"Lues depuis le document — corrigez si nécessaire.",cf_card:"✓ Lu depuis le document",
   nombre:"Prénom",ap1:"Nom",ap2:"Deuxième nom",sexo:"Sexe",dob:"Date de naissance",
   nac:"Nationalité",tdoc:"Type de document",ndoc:"Numéro du document",
@@ -372,7 +373,7 @@ const T={
   sel:"Sélectionner…",lockhint:"🔒 Données lues et vérifiées depuis le document (3 lectures identiques). Si quelque chose ne va pas, revenez en arrière et scannez à nouveau."},
  de:{priv:"Die Prüfung erfolgt nur auf Ihrem Telefon. Es wird kein Bild gesendet oder gespeichert.",
   scan_h:"Scannen Sie den Code Ihres Dokuments",scan_sub:"Der Code sind die 2-3 Zeilen mit «<<<» unten auf Ihrem Reisepass oder Ausweis.",
-  guide:"Erfassen Sie ihn im Rahmen.",start:"Scanner starten",manual:"Manuell eingeben",reading:"Lesen… halten Sie das Dokument ruhig",readok:"✓ Dokument gelesen",
+  guide:"Erfassen Sie ihn im Rahmen.",start:"Scanner starten",manual:"Manuell eingeben",reading:"Lesen… halten Sie das Dokument ruhig",readok:"✓ Dokument gelesen",loading:"Scanner wird vorbereitet…",
   cf_h:"Bestätigen Sie Ihre Daten",cf_sub:"Aus dem Dokument gelesen — bei Bedarf korrigieren.",cf_card:"✓ Aus dem Dokument gelesen",
   nombre:"Vorname",ap1:"Nachname",ap2:"Zweiter Nachname",sexo:"Geschlecht",dob:"Geburtsdatum",
   nac:"Staatsangehörigkeit",tdoc:"Dokumentart",ndoc:"Dokumentnummer",
@@ -389,7 +390,7 @@ const T={
   sel:"Auswählen…",lockhint:"🔒 Daten aus dem Dokument gelesen und überprüft (3 übereinstimmende Lesungen). Falls etwas nicht stimmt, gehen Sie zurück und scannen Sie erneut."},
  it:{priv:"La verifica avviene solo sul tuo telefono. Nessuna immagine viene inviata o salvata.",
   scan_h:"Scansiona il codice del tuo documento",scan_sub:"Il codice sono le 2-3 righe con «<<<» in fondo al tuo passaporto o carta d'identità.",
-  guide:"Inquadralo nel riquadro.",start:"Avvia scanner",manual:"Inserisci a mano",reading:"Lettura… tieni fermo il documento",readok:"✓ Documento letto",
+  guide:"Inquadralo nel riquadro.",start:"Avvia scanner",manual:"Inserisci a mano",reading:"Lettura… tieni fermo il documento",readok:"✓ Documento letto",loading:"Preparazione scanner…",
   cf_h:"Conferma i tuoi dati",cf_sub:"Letti dal documento — correggi se serve.",cf_card:"✓ Letto dal documento",
   nombre:"Nome",ap1:"Primo cognome",ap2:"Secondo cognome",sexo:"Sesso",dob:"Data di nascita",
   nac:"Nazionalità",tdoc:"Tipo di documento",ndoc:"Numero documento",
@@ -525,17 +526,18 @@ async function scanOnce(){ if(busy||found) return; busy=true;
       else scanProg(best);
     } else { if(curProg<0) scanProg(0); dbg.textContent=text; }
   }catch(e){ setStatus("OCR: "+e.message,"warn"); } busy=false; }
-async function startScan(){ setStatus(LANG=="es"?"Iniciando cámara…":"Starting camera…");
+async function startScan(){ setStatus("");
+  // mostra subito la barra (fase 0 con shimmer) + frase "preparando", niente box bianco
+  scanprog.hidden=false; scanprog.classList.remove("ok"); curProg=-1; scanProg(0);
+  const ph=$("t_scanphrase"); if(ph) ph.textContent=tt("loading");
   try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}}); }
-  catch(e){ setStatus((LANG=="es"?"Cámara no disponible. Abre el enlace en Safari/Chrome. ":"Camera unavailable. Open the link in Safari/Chrome. ")+e.message,"warn"); return; }
+  catch(e){ scanprog.hidden=true; setStatus((LANG=="es"?"Cámara no disponible. Abre el enlace en Safari/Chrome. ":"Camera unavailable. Open the link in Safari/Chrome. ")+e.message,"warn"); return; }
   video.srcObject=stream; await video.play();
-  setStatus(LANG=="es"?"Cargando modelo MRZ (~11 MB, solo la 1ª vez)…":"Loading MRZ model (~11 MB, first time only)…");
   if(!worker){ worker=await Tesseract.createWorker('mrz',1,{langPath:'.',workerPath:'./vendor/worker.min.js',corePath:'./vendor'});
     await worker.setParameters({tessedit_char_whitelist:'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ<',tessedit_pageseg_mode:'6'}); }
-  found=false; votes={}; setStatus("");
-  scanprog.hidden=false; scanprog.classList.remove("ok"); curProg=-1;
-  const ph=$("t_scanphrase"); if(ph) ph.textContent=tt("reading");
-  $("scanline").style.display="block"; scanProg(0);
+  found=false; votes={};
+  if(ph) ph.textContent=tt("reading");
+  $("scanline").style.display="block";
   loop=setInterval(scanOnce,1200); }
 function stopScan(keepProg){ clearInterval(loop); loop=null; const sl=$("scanline"); if(sl) sl.style.display="none";
   if(scanprog && !keepProg) scanprog.hidden=true;
