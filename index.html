@@ -337,6 +337,7 @@ function applyLang(){
 
 /* ============ helpers UI ============ */
 const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
 function fillCountrySelects(){
   [["i_nac",false],["i_pais",false]].forEach(([id])=>{
     const sel=$(id), cur=sel.value;
@@ -546,7 +547,7 @@ function goReview(){
    ["Dirección","direccion"],["CP","cp"],["Ciudad","ciudad"],["Provincia","provincia"],["País","pais"],
    ["Teléfono","telefono"],["Email","email"]];
   $("rv_body").innerHTML=rows.filter(r=>g[r[1]]).map(r=>
-    `<div class="row"><span class="k">${r[0]}</span><span class="v">${g[r[1]]}</span></div>`).join("");
+    `<div class="row"><span class="k">${r[0]}</span><span class="v">${esc(g[r[1]])}</span></div>`).join("");
   showScreen("screen-review",4);
 }
 // mappa i dati raccolti sui campi (entry.ID) del Google Form esistente
