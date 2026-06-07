@@ -276,7 +276,7 @@ function flag(iso){ return iso.replace(/./g,c=>String.fromCodePoint(127397+c.cha
 /* ============ i18n ============ */
 const T={
  es:{priv:"La verificación ocurre solo en tu teléfono. Ninguna imagen se envía ni se guarda.",
-  scan_h:"Escanea tu documento",scan_sub:"Apunta a las 2-3 líneas con «<<<» en la parte inferior del pasaporte o DNI.",
+  scan_h:"Escanea el código de tu documento",scan_sub:"Está en la parte inferior, las 2-3 líneas con «<<<» (pasaporte o DNI).",
   guide:"Encuadra SOLO el código (las 2-3 líneas con «<<<» al pie del pasaporte/DNI)",start:"Iniciar escáner",manual:"Rellenar a mano",
   cf_h:"Confirma tus datos",cf_sub:"Leídos del documento — corrige si hace falta.",cf_card:"✓ Leído del documento",
   nombre:"Nombre",ap1:"Primer apellido",ap2:"Segundo apellido",sexo:"Sexo",dob:"Fecha de nacimiento",
@@ -293,7 +293,7 @@ const T={
   req_tel:"Teléfono no válido",req_email:"Email no válido",req_rgpd:"Debes aceptar para continuar",
   sel:"Selecciona…",lockhint:"🔒 Datos leídos y verificados del documento (3 lecturas coincidentes). Si algo no coincide, vuelve atrás y escanea de nuevo."},
  en:{priv:"Scanning happens only on your phone. No image is sent or stored.",
-  scan_h:"Scan your document",scan_sub:"Point at the 2-3 lines with «<<<» at the bottom of your passport or ID.",
+  scan_h:"Scan your document's code",scan_sub:"It's at the bottom — the 2-3 lines with «<<<» (passport or ID).",
   guide:"Frame ONLY the code (the 2-3 lines with «<<<» at the bottom of the passport/ID)",start:"Start scanner",manual:"Fill in manually",
   cf_h:"Confirm your details",cf_sub:"Read from the document — edit if needed.",cf_card:"✓ Read from document",
   nombre:"First name",ap1:"Surname",ap2:"Second surname",sexo:"Sex",dob:"Date of birth",
