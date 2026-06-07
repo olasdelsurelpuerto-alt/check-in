@@ -70,6 +70,9 @@
   @keyframes pop{ 0%{transform:scale(1)} 40%{transform:scale(1.25); box-shadow:0 0 12px 2px rgba(0,150,166,.55)} 100%{transform:scale(1)} }
   .scanprog .phrase{ margin-top:10px; font-size:13.5px; color:var(--ocean); font-weight:600; }
   .scanprog .phrase::before{ content:"📖 "; }
+  footer.legal{ max-width:520px; margin:18px auto 0; padding:16px 18px 26px; text-align:center;
+        font-size:12px; line-height:1.55; color:var(--mut); border-top:1px solid var(--line); }
+  footer.legal::before{ content:"⚖️ "; }
   /* MOBILE: ingrandisce e fa riempire ~3/4 dello schermo */
   @media (max-width:600px){
     main{ padding:18px 16px 28px; }
@@ -280,6 +283,7 @@
     <div class="done"><div class="big">✓</div><h1 id="t_dn_h"></h1><p class="sub" id="t_dn_sub"></p></div>
   </section>
 </main>
+<footer class="legal"><span id="t_legal"></span></footer>
 
 <canvas id="work" hidden></canvas>
 <script src="./vendor/tesseract.min.js"></script>
@@ -340,6 +344,7 @@ function flag(iso){ return iso.replace(/./g,c=>String.fromCodePoint(127397+c.cha
 /* ============ i18n ============ */
 const T={
  es:{priv:"La verificación ocurre solo en tu teléfono. Ninguna imagen se envía ni se guarda.",
+  legal:"El registro de viajeros es obligatorio por ley (Real Decreto 933/2021). Tus datos se comunican únicamente a las autoridades competentes y no se utilizan para ningún otro fin.",
   scan_h:"Escanea el código de tu documento",scan_sub:"El código son las 2-3 líneas con «<<<» en la parte inferior de tu pasaporte o DNI.",
   guide:"Encuádralo dentro del recuadro.",start:"Iniciar escáner",manual:"Rellenar a mano",reading:"Leyendo… mantén el documento firme",readok:"✓ Documento leído",loading:"Preparando el escáner…",
   cf_h:"Confirma tus datos",cf_sub:"Leídos del documento — corrige si hace falta.",cf_card:"✓ Leído del documento",
@@ -357,6 +362,7 @@ const T={
   req_tel:"Teléfono no válido",req_email:"Email no válido",req_rgpd:"Debes aceptar para continuar",
   sel:"Selecciona…",lockhint:"🔒 Datos leídos y verificados del documento (3 lecturas coincidentes). Si algo no coincide, vuelve atrás y escanea de nuevo."},
  en:{priv:"Scanning happens only on your phone. No image is sent or stored.",
+  legal:"Traveler registration is required by law (Royal Decree 933/2021). Your data is shared only with the competent authorities and is not used for any other purpose.",
   scan_h:"Scan your document's code",scan_sub:"The code is the 2-3 lines with «<<<» at the bottom of your passport or ID.",
   guide:"Fit it inside the frame.",start:"Start scanner",manual:"Fill in manually",reading:"Reading… hold the document steady",readok:"✓ Document read",loading:"Preparing the scanner…",
   cf_h:"Confirm your details",cf_sub:"Read from the document — edit if needed.",cf_card:"✓ Read from document",
@@ -374,6 +380,7 @@ const T={
   req_tel:"Invalid phone",req_email:"Invalid email",req_rgpd:"You must accept to continue",
   sel:"Select…",lockhint:"🔒 Data read and verified from your document (3 matching reads). If something is wrong, go back and scan again."},
  fr:{priv:"La vérification a lieu uniquement sur votre téléphone. Aucune image n'est envoyée ni conservée.",
+  legal:"L'enregistrement des voyageurs est obligatoire par la loi (Décret royal 933/2021). Vos données sont communiquées uniquement aux autorités compétentes et ne sont utilisées à aucune autre fin.",
   scan_h:"Scannez le code de votre document",scan_sub:"Le code, ce sont les 2-3 lignes avec « <<< » en bas de votre passeport ou carte d'identité.",
   guide:"Cadrez-le dans le rectangle.",start:"Démarrer le scanner",manual:"Saisir manuellement",reading:"Lecture… maintenez le document immobile",readok:"✓ Document lu",loading:"Préparation du scanner…",
   cf_h:"Confirmez vos données",cf_sub:"Lues depuis le document — corrigez si nécessaire.",cf_card:"✓ Lu depuis le document",
@@ -391,6 +398,7 @@ const T={
   req_tel:"Téléphone invalide",req_email:"E-mail invalide",req_rgpd:"Vous devez accepter pour continuer",
   sel:"Sélectionner…",lockhint:"🔒 Données lues et vérifiées depuis le document (3 lectures identiques). Si quelque chose ne va pas, revenez en arrière et scannez à nouveau."},
  de:{priv:"Die Prüfung erfolgt nur auf Ihrem Telefon. Es wird kein Bild gesendet oder gespeichert.",
+  legal:"Die Reisendenregistrierung ist gesetzlich vorgeschrieben (Königliches Dekret 933/2021). Ihre Daten werden ausschließlich an die zuständigen Behörden übermittelt und für keinen anderen Zweck verwendet.",
   scan_h:"Scannen Sie den Code Ihres Dokuments",scan_sub:"Der Code sind die 2-3 Zeilen mit «<<<» unten auf Ihrem Reisepass oder Ausweis.",
   guide:"Erfassen Sie ihn im Rahmen.",start:"Scanner starten",manual:"Manuell eingeben",reading:"Lesen… halten Sie das Dokument ruhig",readok:"✓ Dokument gelesen",loading:"Scanner wird vorbereitet…",
   cf_h:"Bestätigen Sie Ihre Daten",cf_sub:"Aus dem Dokument gelesen — bei Bedarf korrigieren.",cf_card:"✓ Aus dem Dokument gelesen",
@@ -408,6 +416,7 @@ const T={
   req_tel:"Ungültige Telefonnummer",req_email:"Ungültige E-Mail",req_rgpd:"Sie müssen zustimmen, um fortzufahren",
   sel:"Auswählen…",lockhint:"🔒 Daten aus dem Dokument gelesen und überprüft (3 übereinstimmende Lesungen). Falls etwas nicht stimmt, gehen Sie zurück und scannen Sie erneut."},
  it:{priv:"La verifica avviene solo sul tuo telefono. Nessuna immagine viene inviata o salvata.",
+  legal:"La registrazione dei viaggiatori è obbligatoria per legge (Real Decreto 933/2021). I tuoi dati sono comunicati esclusivamente alle autorità competenti e non sono usati per altri scopi.",
   scan_h:"Scansiona il codice del tuo documento",scan_sub:"Il codice sono le 2-3 righe con «<<<» in fondo al tuo passaporto o carta d'identità.",
   guide:"Inquadralo nel riquadro.",start:"Avvia scanner",manual:"Inserisci a mano",reading:"Lettura… tieni fermo il documento",readok:"✓ Documento letto",loading:"Preparazione scanner…",
   cf_h:"Conferma i tuoi dati",cf_sub:"Letti dal documento — correggi se serve.",cf_card:"✓ Letto dal documento",
@@ -429,7 +438,7 @@ let LANG="es";
 function tt(k){ return T[LANG][k]; }
 function applyLang(){
   document.documentElement.lang=LANG;
-  const map={t_priv:"priv",t_scan_h:"scan_h",t_scan_sub:"scan_sub",t_scanlabel:"guide",t_scanphrase:"reading",
+  const map={t_priv:"priv",t_legal:"legal",t_scan_h:"scan_h",t_scan_sub:"scan_sub",t_scanlabel:"guide",t_scanphrase:"reading",
    startBtn:"start",manualBtn:"manual",t_cf_h:"cf_h",t_cf_sub:"cf_sub",t_cf_card:"cf_card",
    l_nombre:"nombre",l_ap1:"ap1",l_ap2:"ap2",l_sexo:"sexo",l_dob:"dob",l_nac:"nac",l_tdoc:"tdoc",l_ndoc:"ndoc",
    cf_back:"back",cf_next:"next",t_lockhint:"lockhint",t_cp_h:"cp_h",t_cp_sub:"cp_sub",t_cp_doc:"cp_doc",l_soporte:"soporte",h_soporte:"h_soporte",
