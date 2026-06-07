@@ -20,10 +20,16 @@
   .brand .logo{ height:38px; width:38px; border-radius:50%; object-fit:cover;
                 box-shadow:0 2px 8px rgba(0,0,0,.35); background:#fff; }
   header .ttl{ font-family:var(--display); font-size:18px; font-weight:700; color:#fff; letter-spacing:.2px; }
-  header .lang{ display:flex; gap:7px; }
-  header .lang button{ background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.18);
-        font-size:21px; line-height:1; padding:6px 9px; border-radius:10px; filter:grayscale(.5) opacity(.7); transition:.15s; }
-  header .lang button.on{ background:#fff; filter:none; box-shadow:0 2px 8px rgba(0,0,0,.25); }
+  .lang{ position:relative; }
+  .langsel{ display:flex; align-items:center; gap:5px; background:rgba(255,255,255,.14);
+        border:1px solid rgba(255,255,255,.22); padding:7px 10px; border-radius:10px; font-size:19px; color:#fff; }
+  .langsel .caret{ font-size:11px; opacity:.85; }
+  .langmenu{ position:absolute; right:0; top:calc(100% + 6px); background:#fff; border-radius:12px;
+        box-shadow:0 10px 30px rgba(0,0,0,.28); overflow:hidden; min-width:165px; z-index:30; }
+  .langmenu[hidden]{ display:none; }
+  .langmenu button{ display:flex; width:100%; gap:10px; align-items:center; background:#fff; border:0;
+        padding:11px 14px; font-size:15px; color:var(--ink); text-align:left; font-family:var(--font); cursor:pointer; }
+  .langmenu button:hover, .langmenu button.on{ background:#f3ece0; }
   .priv{ font-size:14px; line-height:1.35; padding:11px 16px; background:var(--ocean); color:#fff; }
   .priv b{ color:var(--cream); }
   main{ max-width:520px; margin:0 auto; padding:13px; }
@@ -104,9 +110,17 @@
     <img class="logo" src="./logo.png" alt="OlasDelSur">
     <span class="ttl">OlasDelSur · Check-in</span>
   </div>
-  <div class="lang">
-    <button id="lang-es" class="on" aria-label="Español">🇪🇸</button>
-    <button id="lang-en" aria-label="English">🇬🇧</button>
+  <div class="lang" id="langwrap">
+    <button class="langsel" id="langbtn" aria-haspopup="listbox" aria-expanded="false" aria-label="Idioma / Language">
+      <span id="curflag">🇪🇸</span><span class="caret">▾</span>
+    </button>
+    <div class="langmenu" id="langmenu" hidden role="listbox">
+      <button data-l="es">🇪🇸 Español</button>
+      <button data-l="en">🇬🇧 English</button>
+      <button data-l="fr">🇫🇷 Français</button>
+      <button data-l="de">🇩🇪 Deutsch</button>
+      <button data-l="it">🇮🇹 Italiano</button>
+    </div>
   </div>
 </header>
 <div class="priv" id="privbar">🔒 <b id="t_priv"></b></div>
@@ -315,7 +329,58 @@ const T={
   dn_h:"Registration complete!",dn_sub:"Thank you. Your details have been registered.",dn_json:"Collected data (JSON)",
   req_calle:"Enter the address",req_cp:"Invalid postal code",req_ciudad:"Enter the city",
   req_tel:"Invalid phone",req_email:"Invalid email",req_rgpd:"You must accept to continue",
-  sel:"Select…",lockhint:"🔒 Data read and verified from your document (3 matching reads). If something is wrong, go back and scan again."}
+  sel:"Select…",lockhint:"🔒 Data read and verified from your document (3 matching reads). If something is wrong, go back and scan again."},
+ fr:{priv:"La vérification a lieu uniquement sur votre téléphone. Aucune image n'est envoyée ni conservée.",
+  scan_h:"Scannez le code de votre document",scan_sub:"Il se trouve en bas — les 2-3 lignes avec « <<< » (passeport ou carte d'identité).",
+  guide:"Cadrez UNIQUEMENT le code (les 2-3 lignes avec « <<< » en bas du passeport/carte)",start:"Démarrer le scanner",manual:"Saisir manuellement",
+  cf_h:"Confirmez vos données",cf_sub:"Lues depuis le document — corrigez si nécessaire.",cf_card:"✓ Lu depuis le document",
+  nombre:"Prénom",ap1:"Nom",ap2:"Deuxième nom",sexo:"Sexe",dob:"Date de naissance",
+  nac:"Nationalité",tdoc:"Type de document",ndoc:"Numéro du document",
+  back:"Retour",next:"Continuer",
+  cp_h:"Complétez vos informations",cp_sub:"Il ne manque que ces données, obligatoires par la loi (RD 933/2021).",
+  cp_doc:"Document",soporte:"Numéro de support",h_soporte:"Au recto du DNI/NIE (code type IDESP/IXESP).",
+  cp_addr:"Adresse de résidence",calle:"Rue et numéro",cpc:"Code postal",ciudad:"Ville",
+  pais:"Pays",prov:"Province / Région",cp_contact:"Contact",tel:"Téléphone portable",email:"E-mail",
+  rgpd:"J'accepte le traitement de mes données pour l'enregistrement obligatoire des voyageurs (RD 933/2021).",
+  rv_h:"Vérifiez et envoyez",rv_sub:"Vérifiez que tout est correct.",send:"Envoyer l'enregistrement",
+  dn_h:"Enregistrement terminé !",dn_sub:"Merci. Vos données ont été enregistrées.",dn_json:"Données (JSON)",
+  req_calle:"Saisissez l'adresse",req_cp:"Code postal invalide",req_ciudad:"Saisissez la ville",
+  req_tel:"Téléphone invalide",req_email:"E-mail invalide",req_rgpd:"Vous devez accepter pour continuer",
+  sel:"Sélectionner…",lockhint:"🔒 Données lues et vérifiées depuis le document (3 lectures identiques). Si quelque chose ne va pas, revenez en arrière et scannez à nouveau."},
+ de:{priv:"Die Prüfung erfolgt nur auf Ihrem Telefon. Es wird kein Bild gesendet oder gespeichert.",
+  scan_h:"Scannen Sie den Code Ihres Dokuments",scan_sub:"Er befindet sich unten — die 2-3 Zeilen mit «<<<» (Reisepass oder Ausweis).",
+  guide:"Erfassen Sie NUR den Code (die 2-3 Zeilen mit «<<<» unten am Pass/Ausweis)",start:"Scanner starten",manual:"Manuell eingeben",
+  cf_h:"Bestätigen Sie Ihre Daten",cf_sub:"Aus dem Dokument gelesen — bei Bedarf korrigieren.",cf_card:"✓ Aus dem Dokument gelesen",
+  nombre:"Vorname",ap1:"Nachname",ap2:"Zweiter Nachname",sexo:"Geschlecht",dob:"Geburtsdatum",
+  nac:"Staatsangehörigkeit",tdoc:"Dokumentart",ndoc:"Dokumentnummer",
+  back:"Zurück",next:"Weiter",
+  cp_h:"Vervollständigen Sie Ihre Daten",cp_sub:"Nur diese Angaben fehlen, gesetzlich vorgeschrieben (RD 933/2021).",
+  cp_doc:"Dokument",soporte:"Trägernummer",h_soporte:"Auf der Vorderseite des DNI/NIE (Code wie IDESP/IXESP).",
+  cp_addr:"Wohnadresse",calle:"Straße und Hausnummer",cpc:"Postleitzahl",ciudad:"Stadt",
+  pais:"Land",prov:"Provinz / Region",cp_contact:"Kontakt",tel:"Mobiltelefon",email:"E-Mail",
+  rgpd:"Ich stimme der Verarbeitung meiner Daten für die obligatorische Reisendenregistrierung zu (RD 933/2021).",
+  rv_h:"Prüfen und senden",rv_sub:"Prüfen Sie, ob alles korrekt ist.",send:"Registrierung senden",
+  dn_h:"Registrierung abgeschlossen!",dn_sub:"Danke. Ihre Daten wurden registriert.",dn_json:"Daten (JSON)",
+  req_calle:"Adresse eingeben",req_cp:"Ungültige Postleitzahl",req_ciudad:"Stadt eingeben",
+  req_tel:"Ungültige Telefonnummer",req_email:"Ungültige E-Mail",req_rgpd:"Sie müssen zustimmen, um fortzufahren",
+  sel:"Auswählen…",lockhint:"🔒 Daten aus dem Dokument gelesen und überprüft (3 übereinstimmende Lesungen). Falls etwas nicht stimmt, gehen Sie zurück und scannen Sie erneut."},
+ it:{priv:"La verifica avviene solo sul tuo telefono. Nessuna immagine viene inviata o salvata.",
+  scan_h:"Scansiona il codice del tuo documento",scan_sub:"È in fondo — le 2-3 righe con «<<<» (passaporto o carta d'identità).",
+  guide:"Inquadra SOLO il codice (le 2-3 righe con «<<<» in fondo al passaporto/carta)",start:"Avvia scanner",manual:"Inserisci a mano",
+  cf_h:"Conferma i tuoi dati",cf_sub:"Letti dal documento — correggi se serve.",cf_card:"✓ Letto dal documento",
+  nombre:"Nome",ap1:"Primo cognome",ap2:"Secondo cognome",sexo:"Sesso",dob:"Data di nascita",
+  nac:"Nazionalità",tdoc:"Tipo di documento",ndoc:"Numero documento",
+  back:"Indietro",next:"Continua",
+  cp_h:"Completa le informazioni",cp_sub:"Mancano solo questi dati, obbligatori per legge (RD 933/2021).",
+  cp_doc:"Documento",soporte:"Numero di supporto",h_soporte:"Sul fronte del DNI/NIE (sigla tipo IDESP/IXESP).",
+  cp_addr:"Indirizzo di residenza",calle:"Via e numero",cpc:"Codice postale",ciudad:"Città",
+  pais:"Paese",prov:"Provincia",cp_contact:"Contatto",tel:"Telefono cellulare",email:"Email",
+  rgpd:"Acconsento al trattamento dei miei dati per la registrazione obbligatoria dei viaggiatori (RD 933/2021).",
+  rv_h:"Rivedi e invia",rv_sub:"Controlla che sia tutto corretto.",send:"Invia registrazione",
+  dn_h:"Registrazione completata!",dn_sub:"Grazie. I tuoi dati sono stati registrati.",dn_json:"Dati (JSON)",
+  req_calle:"Inserisci l'indirizzo",req_cp:"Codice postale non valido",req_ciudad:"Inserisci la città",
+  req_tel:"Telefono non valido",req_email:"Email non valida",req_rgpd:"Devi accettare per continuare",
+  sel:"Seleziona…",lockhint:"🔒 Dati letti e verificati dal documento (3 letture coincidenti). Se qualcosa non torna, torna indietro e scansiona di nuovo."}
 };
 let LANG="es";
 function tt(k){ return T[LANG][k]; }
@@ -588,8 +653,19 @@ async function send(){
 }
 
 /* ============ wiring ============ */
-$("lang-es").onclick=()=>{LANG="es";$("lang-es").classList.add("on");$("lang-en").classList.remove("on");applyLang();};
-$("lang-en").onclick=()=>{LANG="en";$("lang-en").classList.add("on");$("lang-es").classList.remove("on");applyLang();};
+const FLAGS={es:"🇪🇸",en:"🇬🇧",fr:"🇫🇷",de:"🇩🇪",it:"🇮🇹"};
+const langmenu=$("langmenu"), langbtn=$("langbtn");
+function closeLangMenu(){ langmenu.setAttribute("hidden",""); langbtn.setAttribute("aria-expanded","false"); }
+langbtn.onclick=(e)=>{ e.stopPropagation();
+  if(langmenu.hasAttribute("hidden")){ langmenu.removeAttribute("hidden"); langbtn.setAttribute("aria-expanded","true"); }
+  else closeLangMenu(); };
+langmenu.querySelectorAll("button").forEach(b=>{ b.onclick=()=>{
+  LANG=b.dataset.l; $("curflag").textContent=FLAGS[LANG];
+  langmenu.querySelectorAll("button").forEach(x=>x.classList.toggle("on", x===b));
+  closeLangMenu(); applyLang();
+};});
+document.addEventListener("click",()=>{ if(!langmenu.hasAttribute("hidden")) closeLangMenu(); });
+[...langmenu.querySelectorAll("button")].find(b=>b.dataset.l==="es")?.classList.add("on");
 $("startBtn").onclick=startScan;
 $("cf_back").onclick=()=>showScreen("screen-scan",1);
 $("cf_next").onclick=()=>{ refreshSoporte(); refreshCountryDeps(); showScreen("screen-complete",3); };
