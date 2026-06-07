@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Scanner Documento — Prototipo MRZ (on-device)</title>
+<style>
+  :root{ --ocean:#1b6ca8; --coral:#ff6f5e; --sand:#fff7ec; --ink:#1d2733; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+        background:var(--sand); color:var(--ink); }
+  header{ padding:14px 16px; background:var(--ocean); color:#fff; }
+  header h1{ font-size:17px; margin:0 0 4px; }
+  .priv{ font-size:12.5px; opacity:.95; }
+  .priv b{ color:#ffe9a8; }
+  main{ max-width:560px; margin:0 auto; padding:14px; }
+  .camwrap{ position:relative; width:100%; aspect-ratio:3/4; background:#000;
+            border-radius:14px; overflow:hidden; }
+  video{ width:100%; height:100%; object-fit:cover; }
+  .guide{ position:absolute; left:4%; right:4%; bottom:14%; height:20%;
+          border:2.5px dashed rgba(255,255,255,.9); border-radius:8px;
+          box-shadow:0 0 0 9999px rgba(0,0,0,.35); }
+  .guide span{ position:absolute; top:-26px; left:0; right:0; text-align:center;
+               color:#fff; font-size:12px; text-shadow:0 1px 3px #000; }
+  .btns{ display:flex; gap:10px; margin:14px 0; }
+  button{ flex:1; padding:13px; border:0; border-radius:11px; font-size:15px;
+          font-weight:600; color:#fff; background:var(--coral); }
+  button.alt{ background:var(--ocean); }
+  button:disabled{ opacity:.45; }
+  #status{ font-size:13px; padding:9px 12px; border-radius:9px; background:#fff;
+           border:1px solid #e7ddcb; min-height:20px; }
+  #status.ok{ background:#e7f7ec; border-color:#9cd9af; }
+  #status.warn{ background:#fff3e0; border-color:#f0c47a; }
+  .fields{ margin-top:14px; display:none; }
+  .fields.show{ display:block; }
+  .fields h2{ font-size:14px; margin:0 0 8px; }
+  .row{ display:flex; gap:8px; margin-bottom:8px; }
+  .row label{ flex:0 0 40%; font-size:13px; align-self:center; color:#5a6675; }
+  .row input{ flex:1; padding:9px; border:1px solid #d9cfbd; border-radius:8px; font-size:14px; }
+  details{ margin-top:14px; font-size:12px; color:#7a7060; }
+  details pre{ white-space:pre-wrap; word-break:break-all; background:#101820; color:#7CFC9B;
+               padding:10px; border-radius:8px; font-size:11px; }
+  .badge{ display:inline-block; font-size:11px; padding:2px 7px; border-radius:20px; }
+  .badge.valid{ background:#9cd9af; color:#0a3d1c; }
+  .badge.invalid{ background:#f3b0a8; color:#5a1410; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🛂 Scanner Documento — Prototipo</h1>
+  <div class="priv">🔒 La scansione avviene <b>solo sul tuo telefono</b>. Nessuna immagine viene inviata o salvata.</div>
+</header>
+
+<main>
+  <div class="camwrap">
+    <video id="video" playsinline muted></video>
+    <div class="guide"><span>Allinea qui le 2-3 righe in fondo al documento</span></div>
+  </div>
+
+  <div class="btns">
+    <button id="start">Avvia scanner</button>
+    <button id="stop" class="alt" disabled>Stop</button>
+  </div>
+
+  <div id="status">Premi «Avvia scanner» e inquadra la zona MRZ (le righe con i &lt;&lt;&lt;).</div>
+
+  <div class="fields" id="fields">
+    <h2>Campi estratti <span id="vbadge" class="badge"></span></h2>
+    <div class="row"><label>Tipo / Formato</label><input id="f_type" readonly></div>
+    <div class="row"><label>Cognome</label><input id="f_surname"></div>
+    <div class="row"><label>Nome</label><input id="f_given"></div>
+    <div class="row"><label>N° documento</label><input id="f_docnum"></div>
+    <div class="row"><label>Nazionalità</label><input id="f_nat"></div>
+    <div class="row"><label>Data nascita</label><input id="f_dob"></div>
+    <div class="row"><label>Sesso</label><input id="f_sex"></div>
+    <div class="row"><label>Scadenza</label><input id="f_exp"></div>
+  </div>
+
+  <details>
+    <summary>Debug (OCR grezzo + check digit)</summary>
+    <pre id="dbg">—</pre>
+  </details>
+</main>
+
+<canvas id="work" hidden></canvas>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+const video=document.getElementById('video'), work=document.getElementById('work');
+const startBtn=document.getElementById('start'), stopBtn=document.getElementById('stop');
+const statusEl=document.getElementById('status'), dbg=document.getElementById('dbg');
+const fieldsEl=document.getElementById('fields'), vbadge=document.getElementById('vbadge');
+let worker=null, stream=null, busy=false, loop=null, found=false;
+
+function setStatus(t,cls){ statusEl.textContent=t; statusEl.className=cls||''; }
+
+// ---- MRZ check-digit (ICAO 9303): pesi 7-3-1, mod 10 ----
+function val(c){ if(c>='0'&&c<='9')return c.charCodeAt(0)-48; if(c>='A'&&c<='Z')return c.charCodeAt(0)-55; return 0; }
+function cd(str){ const w=[7,3,1]; let s=0; for(let i=0;i<str.length;i++) s+=val(str[i])*w[i%3]; return s%10; }
+function ck(str,d){ return String(cd(str))===d; }
+function ymd(s){ return s.length===6? `${s.slice(4)}/${s.slice(2,4)}/${s.slice(0,2)}` : s; } // YYMMDD -> DD/MM/YY
+function names(field){ const p=field.split('<<'); return { surname:(p[0]||'').replace(/</g,' ').trim(),
+                       given:(p[1]||'').replace(/</g,' ').trim() }; }
+
+// ---- Parser TD3 (passaporto 2x44) e TD1 (carta/DNI 3x30) ----
+function parseTD3(l1,l2){
+  const docnum=l2.slice(0,9), cdoc=l2[9], nat=l2.slice(10,13);
+  const dob=l2.slice(13,19), cdob=l2[19], sex=l2[20], exp=l2.slice(21,27), cexp=l2[27];
+  const opt=l2.slice(28,42), copt=l2[42], comp=l2[43];
+  const compStr=l2.slice(0,10)+l2.slice(13,20)+l2.slice(21,28)+l2.slice(28,43);
+  const checks={doc:ck(docnum,cdoc), dob:ck(dob,cdob), exp:ck(exp,cexp), comp:ck(compStr,comp)};
+  const nm=names(l1.slice(5));
+  return { fmt:'TD3 (Passaporto)', ...nm, docnum:docnum.replace(/</g,''), nat, dob:ymd(dob),
+           sex:sex.replace(/</g,''), exp:ymd(exp), checks };
+}
+function parseTD1(l1,l2,l3){
+  const docnum=l1.slice(5,14), cdoc=l1[14];
+  const dob=l2.slice(0,6), cdob=l2[6], sex=l2[7], exp=l2.slice(8,14), cexp=l2[14], nat=l2.slice(15,18);
+  const comp=l2[29];
+  const compStr=l1.slice(5,30)+l2.slice(0,7)+l2.slice(8,15)+l2.slice(18,29);
+  const checks={doc:ck(docnum,cdoc), dob:ck(dob,cdob), exp:ck(exp,cexp), comp:ck(compStr,comp)};
+  const nm=names(l3);
+  return { fmt:'TD1 (Carta/DNI)', ...nm, docnum:docnum.replace(/</g,''), nat, dob:ymd(dob),
+           sex:sex.replace(/</g,''), exp:ymd(exp), checks };
+}
+
+// estrae righe candidate MRZ dal testo OCR
+function mrzLines(text){
+  return text.toUpperCase().split('\n')
+    .map(s=>s.replace(/[^A-Z0-9<]/g,''))      // tieni solo caratteri MRZ
+    .filter(s=>s.length>=28 && s.length<=46 && (s.match(/</g)||[]).length>=2);
+}
+function tryParse(text){
+  const lines=mrzLines(text);
+  // TD3: due righe ~44
+  const l44=lines.filter(s=>s.length>=42);
+  if(l44.length>=2) return parseTD3(l44[0].padEnd(44,'<').slice(0,44), l44[1].padEnd(44,'<').slice(0,44));
+  // TD1: tre righe ~30
+  const l30=lines.filter(s=>s.length>=28&&s.length<=32);
+  if(l30.length>=3) return parseTD1(...l30.slice(0,3).map(s=>s.padEnd(30,'<').slice(0,30)));
+  return null;
+}
+
+function show(r,rawText){
+  const allOK=Object.values(r.checks).every(Boolean);
+  vbadge.textContent=allOK?'check digit OK ✓':'check digit parziali';
+  vbadge.className='badge '+(allOK?'valid':'invalid');
+  f_type.value=r.fmt; f_surname.value=r.surname; f_given.value=r.given;
+  f_docnum.value=r.docnum; f_nat.value=r.nat; f_dob.value=r.dob; f_sex.value=r.sex; f_exp.value=r.exp;
+  fieldsEl.classList.add('show');
+  dbg.textContent='OCR grezzo:\n'+rawText+'\n\ncheck digits: '+JSON.stringify(r.checks);
+  setStatus(allOK? '✅ MRZ riconosciuta e validata. Controlla i campi.'
+                 : '⚠️ MRZ letta ma alcuni check digit non tornano — riprova o correggi a mano.',
+            allOK?'ok':'warn');
+}
+
+// cattura il riquadro guida, pre-processa (grigio + soglia + upscale) e fa OCR
+async function scanOnce(){
+  if(busy||found) return; busy=true;
+  const vw=video.videoWidth, vh=video.videoHeight;
+  if(!vw){ busy=false; return; }
+  const gx=0.04*vw, gw=0.92*vw, gy=0.66*vh, gh=0.20*vh;   // = riquadro .guide
+  const scale=2;
+  work.width=gw*scale; work.height=gh*scale;
+  const ctx=work.getContext('2d');
+  ctx.drawImage(video, gx,gy,gw,gh, 0,0, work.width,work.height);
+  // grigio + soglia adattiva semplice
+  const img=ctx.getImageData(0,0,work.width,work.height), d=img.data; let sum=0;
+  for(let i=0;i<d.length;i+=4){ const g=0.3*d[i]+0.59*d[i+1]+0.11*d[i+2]; d[i]=d[i+1]=d[i+2]=g; sum+=g; }
+  const thr=(sum/(d.length/4))*0.92;
+  for(let i=0;i<d.length;i+=4){ const v=d[i]<thr?0:255; d[i]=d[i+1]=d[i+2]=v; }
+  ctx.putImageData(img,0,0);
+  try{
+    const {data:{text}}=await worker.recognize(work);
+    const r=tryParse(text);
+    if(r){ const allOK=Object.values(r.checks).every(Boolean);
+           show(r,text);
+           if(allOK){ found=true; stopScan(); } }   // stop solo se pienamente valida
+    else { setStatus('Cerco la zona MRZ… tieni il documento fermo e ben illuminato.'); dbg.textContent=text; }
+  }catch(e){ setStatus('Errore OCR: '+e.message,'warn'); }
+  busy=false;
+}
+
+async function startScan(){
+  setStatus('Avvio camera…');
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}});
+  }catch(e){ setStatus('Camera non disponibile: '+e.message+'  (se sei nell\'app Airbnb/Instagram, apri il link in Safari/Chrome)','warn'); return; }
+  video.srcObject=stream; await video.play();
+  setStatus('Inizializzo OCR (primo avvio: ~qualche secondo)…');
+  if(!worker){
+    worker=await Tesseract.createWorker('eng');
+    await worker.setParameters({ tessedit_char_whitelist:'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ<',
+                                 tessedit_pageseg_mode:'6' });
+  }
+  found=false; fieldsEl.classList.remove('show');
+  setStatus('Scanner attivo. Inquadra la zona MRZ.');
+  startBtn.disabled=true; stopBtn.disabled=false;
+  loop=setInterval(scanOnce,1200);
+}
+function stopScan(){
+  clearInterval(loop); loop=null;
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  startBtn.disabled=false; stopBtn.disabled=true;
+}
+startBtn.onclick=startScan; stopBtn.onclick=()=>{ stopScan(); setStatus('Scanner fermato.'); };
+</script>
+</body>
+</html>
