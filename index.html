@@ -43,6 +43,9 @@
   input,select{ width:100%; padding:11px; border:1px solid #d9cfbd; border-radius:9px; font-size:16px; background:#fff; color:var(--ink); }
   input:focus,select:focus{ outline:none; border-color:var(--ocean); }
   input.bad,select.bad{ border-color:var(--coral); background:#fff5f3; }
+  input.locked,select.locked{ background:#eaf3ec; border-color:#bfe0c8; color:#2a3a2a;
+        -webkit-text-fill-color:#2a3a2a; opacity:1; font-weight:600; }
+  .lockhint{ font-size:11.5px; color:var(--ok); margin-top:10px; }
   .err{ color:var(--coral); font-size:11.5px; margin-top:3px; display:none; }
   .err.show{ display:block; }
   .two{ display:flex; gap:10px; } .two>*{ flex:1; }
@@ -85,7 +88,6 @@
     </div>
     <div class="nav">
       <button class="act" id="startBtn"></button>
-      <button class="ghost" id="manualBtn"></button>
     </div>
     <div id="status"></div>
     <details><summary>Debug (OCR)</summary><pre id="dbg">—</pre></details>
@@ -112,6 +114,7 @@
         <div class="fld"><label id="l_tdoc"></label><select id="i_tdoc"></select></div>
         <div class="fld"><label id="l_ndoc"></label><input id="i_ndoc"></div>
       </div>
+      <div class="lockhint" id="t_lockhint"></div>
     </div>
     <div class="nav">
       <button class="ghost" id="cf_back"></button>
@@ -256,7 +259,7 @@ const T={
   dn_h:"¡Registro completado!",dn_sub:"Gracias. Tus datos han sido registrados.",dn_json:"Datos recogidos (JSON)",
   req_calle:"Introduce la dirección",req_cp:"Código postal no válido",req_ciudad:"Introduce la ciudad",
   req_tel:"Teléfono no válido",req_email:"Email no válido",req_rgpd:"Debes aceptar para continuar",
-  sel:"Selecciona…"},
+  sel:"Selecciona…",lockhint:"🔒 Datos de identidad leídos y verificados del documento: no se pueden modificar ni borrar."},
  en:{priv:"Scanning happens only on your phone. No image is sent or stored.",
   scan_h:"Scan your document",scan_sub:"Point at the 2-3 lines with «<<<» at the bottom of your passport or ID.",
   guide:"Align the bottom of the document here",start:"Start scanner",manual:"Fill in manually",
@@ -273,7 +276,7 @@ const T={
   dn_h:"Registration complete!",dn_sub:"Thank you. Your details have been registered.",dn_json:"Collected data (JSON)",
   req_calle:"Enter the address",req_cp:"Invalid postal code",req_ciudad:"Enter the city",
   req_tel:"Invalid phone",req_email:"Invalid email",req_rgpd:"You must accept to continue",
-  sel:"Select…"}
+  sel:"Select…",lockhint:"🔒 Identity data read and verified from your document: cannot be edited or deleted."}
 };
 let LANG="es";
 function tt(k){ return T[LANG][k]; }
@@ -282,7 +285,7 @@ function applyLang(){
   const map={t_priv:"priv",t_scan_h:"scan_h",t_scan_sub:"scan_sub",t_guide:"guide",
    startBtn:"start",manualBtn:"manual",t_cf_h:"cf_h",t_cf_sub:"cf_sub",t_cf_card:"cf_card",
    l_nombre:"nombre",l_ap1:"ap1",l_ap2:"ap2",l_sexo:"sexo",l_dob:"dob",l_nac:"nac",l_tdoc:"tdoc",l_ndoc:"ndoc",
-   cf_back:"back",cf_next:"next",t_cp_h:"cp_h",t_cp_sub:"cp_sub",t_cp_doc:"cp_doc",l_soporte:"soporte",h_soporte:"h_soporte",
+   cf_back:"back",cf_next:"next",t_lockhint:"lockhint",t_cp_h:"cp_h",t_cp_sub:"cp_sub",t_cp_doc:"cp_doc",l_soporte:"soporte",h_soporte:"h_soporte",
    t_cp_addr:"cp_addr",l_calle:"calle",l_cp:"cpc",l_ciudad:"ciudad",l_pais:"pais",l_prov:"prov",
    t_cp_contact:"cp_contact",l_tel:"tel",l_email:"email",t_rgpd:"rgpd",
    cp_back:"back",cp_next:"next",t_rv_h:"rv_h",t_rv_sub:"rv_sub",rv_back:"back",rv_send:"send",
@@ -379,9 +382,14 @@ function onScanned(r){
   const iso=ICAO2ISO[r.nat]||""; if(iso) $("i_nac").value=iso;
   $("i_tdoc").value = r.fmt==="TD1" ? "DNI" : "PASAPORTE";
   $("i_ndoc").value=r.docnum||"";
+  lockConfirm();
   showScreen("screen-confirm",2);
 }
-function goManual(){ stopScan(); showScreen("screen-confirm",2); }
+// blocca i campi estratti dall'MRZ (verificati coi check digit): non modificabili né cancellabili
+function lockConfirm(){
+  ["i_nombre","i_ap1","i_ndoc"].forEach(id=>{ const e=$(id); e.readOnly=true; e.classList.add("locked"); });
+  ["i_sexo","i_nac","i_dob"].forEach(id=>{ const e=$(id); e.disabled=true; e.classList.add("locked"); });
+}
 
 // tipo doc spagnolo -> mostra número de soporte
 function refreshSoporte(){
@@ -461,7 +469,6 @@ async function send(){
 $("lang-es").onclick=()=>{LANG="es";$("lang-es").classList.add("on");$("lang-en").classList.remove("on");applyLang();};
 $("lang-en").onclick=()=>{LANG="en";$("lang-en").classList.add("on");$("lang-es").classList.remove("on");applyLang();};
 $("startBtn").onclick=startScan;
-$("manualBtn").onclick=goManual;
 $("cf_back").onclick=()=>showScreen("screen-scan",1);
 $("cf_next").onclick=()=>{ refreshSoporte(); refreshCountryDeps(); showScreen("screen-complete",3); };
 $("i_tdoc").onchange=refreshSoporte;
