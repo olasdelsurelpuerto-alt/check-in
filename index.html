@@ -336,10 +336,22 @@ function parseTD3(l1,l2){ const dn=l2.slice(0,9),cdn=l2[9],nat=l2.slice(10,13),d
   const checks={doc:ck(dn,cdn),dob:ck(dob,cdob),exp:ck(exp,cexp),comp:ck(cs,comp)};
   return {fmt:"TD3",...names(l1.slice(5)),docnum:dn.replace(/</g,''),nat,dob:ymd(dob),sex:sex.replace(/</g,''),checks}; }
 function parseTD1(l1,l2,l3){ const dn=l1.slice(5,14),cdn=l1[14],dob=l2.slice(0,6),cdob=l2[6],sex=l2[7],
-  exp=l2.slice(8,14),cexp=l2[14],nat=l2.slice(15,18),comp=l2[29];
+  exp=l2.slice(8,14),cexp=l2[14],nat=l2.slice(15,18),comp=l2[29],issuer=l1.slice(2,5);
   const cs=l1.slice(5,30)+l2.slice(0,7)+l2.slice(8,15)+l2.slice(18,29);
   const checks={doc:ck(dn,cdn),dob:ck(dob,cdob),exp:ck(exp,cexp),comp:ck(cs,comp)};
-  return {fmt:"TD1",...names(l3),docnum:dn.replace(/</g,''),nat,dob:ymd(dob),sex:sex.replace(/</g,''),checks}; }
+  const r={fmt:"TD1",issuer,...names(l3),docnum:dn.replace(/</g,''),nat,dob:ymd(dob),sex:sex.replace(/</g,''),checks};
+  // Parser specifico DNI/NIE spagnolo: soporte e NIF sono in campi diversi rispetto allo standard
+  if(issuer==="ESP"){
+    const soporte=l1.slice(5,14).replace(/</g,'');          // "document number" MRZ = nº de soporte
+    const nif=l1.slice(15,30).replace(/</g,'');             // dati opzionali = nº DNI/NIE reale
+    const prim=(l3.split('<<')[0]||'');                     // identificatore primario = i due cognomi
+    const aps=prim.split('<').filter(Boolean);
+    r.es={ soporte, nif,
+           ap1:(aps[0]||'').replace(/</g,' ').trim(),
+           ap2:(aps.slice(1).join(' ')||'').replace(/</g,' ').trim(),
+           tipo:/^[XYZ]/.test(nif)?'NIE':'DNI' };
+  }
+  return r; }
 function mrzLines(t){ return t.toUpperCase().split('\n').map(s=>s.replace(/[^A-Z0-9<]/g,''))
   .filter(s=>s.length>=28&&s.length<=46&&(s.match(/</g)||[]).length>=2); }
 function tryParse(t){ const L=mrzLines(t); const l44=L.filter(s=>s.length>=42);
@@ -376,19 +388,27 @@ function inferYear(yy){ const n=+yy, cur=new Date().getFullYear()%100; return (n
 function dobISO(ddmmyy){ const p=ddmmyy.split('/'); if(p.length!=3) return ""; return `${inferYear(p[2])}-${p[1]}-${p[0]}`; }
 function onScanned(r){
   G.scan=r;
-  $("i_nombre").value=r.given||""; $("i_ap1").value=r.surname||""; $("i_ap2").value="";
+  // default generico (passaporto / TD1 non-ESP)
+  let ap1=r.surname||"", ap2="", ndoc=r.docnum||"", tdoc=(r.fmt==="TD1"?"DNI":"PASAPORTE"), soporte="";
+  if(r.es){ ap1=r.es.ap1; ap2=r.es.ap2; ndoc=r.es.nif; tdoc=r.es.tipo; soporte=r.es.soporte; }
+  $("i_nombre").value=r.given||"";
+  $("i_ap1").value=ap1; $("i_ap2").value=ap2;
   $("i_sexo").value=(r.sex==="F"?"F":r.sex==="M"?"M":"X");
   $("i_dob").value=dobISO(r.dob);
   const iso=ICAO2ISO[r.nat]||""; if(iso) $("i_nac").value=iso;
-  $("i_tdoc").value = r.fmt==="TD1" ? "DNI" : "PASAPORTE";
-  $("i_ndoc").value=r.docnum||"";
-  lockConfirm();
+  $("i_tdoc").value=tdoc; $("i_ndoc").value=ndoc; $("i_soporte").value=soporte;
+  lockConfirm(r);
   showScreen("screen-confirm",2);
 }
-// blocca i campi estratti dall'MRZ (verificati coi check digit): non modificabili né cancellabili
-function lockConfirm(){
+// blocca i campi estratti dall'MRZ (verificati coi check digit): non modificabili né cancellabili.
+// Per il DNI/NIE spagnolo si estraggono e bloccano anche 2° cognome, tipo doc, n° soporte.
+function lockConfirm(r){
   ["i_nombre","i_ap1","i_ndoc"].forEach(id=>{ const e=$(id); e.readOnly=true; e.classList.add("locked"); });
   ["i_sexo","i_nac","i_dob"].forEach(id=>{ const e=$(id); e.disabled=true; e.classList.add("locked"); });
+  const es=!!(r&&r.es);
+  const ap2=$("i_ap2"); ap2.readOnly=es; ap2.classList.toggle("locked",es);
+  const td=$("i_tdoc"); td.disabled=es; td.classList.toggle("locked",es);
+  const sp=$("i_soporte"); sp.readOnly=es; sp.classList.toggle("locked",es);
 }
 
 // tipo doc spagnolo -> mostra número de soporte
