@@ -26,11 +26,21 @@
   h1{ font-size:18px; margin:2px 0 4px; }
   .sub{ color:var(--mut); font-size:13px; margin:0 0 14px; }
   /* scanner */
-  .camwrap{ position:relative; width:100%; aspect-ratio:3/4; background:#000; border-radius:14px; overflow:hidden; }
-  video{ width:100%; height:100%; object-fit:cover; }
-  .guide{ position:absolute; left:4%; right:4%; bottom:14%; height:20%;
-          border:2.5px dashed rgba(255,255,255,.9); border-radius:8px; box-shadow:0 0 0 9999px rgba(0,0,0,.35); }
-  .guide span{ position:absolute; top:-26px; left:0; right:0; text-align:center; color:#fff; font-size:12px; text-shadow:0 1px 3px #000; }
+  .scanlabel{ font-size:13px; color:var(--mut); text-align:center; margin:0 0 10px; }
+  /* fessura-scanner: si inquadra SOLO il codice MRZ */
+  .slot{ position:relative; width:100%; aspect-ratio:3/1; background:#000; border-radius:14px;
+         overflow:hidden; box-shadow:0 6px 20px rgba(27,108,168,.25); }
+  .slot video{ width:100%; height:100%; object-fit:cover; }
+  .frame{ position:absolute; inset:0; pointer-events:none; }
+  .corner{ position:absolute; width:26px; height:26px; border:3px solid #fff; opacity:.95; }
+  .corner.tl{ top:9px; left:9px; border-right:0; border-bottom:0; border-radius:7px 0 0 0; }
+  .corner.tr{ top:9px; right:9px; border-left:0; border-bottom:0; border-radius:0 7px 0 0; }
+  .corner.bl{ bottom:9px; left:9px; border-right:0; border-top:0; border-radius:0 0 0 7px; }
+  .corner.br{ bottom:9px; right:9px; border-left:0; border-top:0; border-radius:0 0 7px 0; }
+  .scanline{ position:absolute; left:7%; right:7%; height:2px;
+             background:linear-gradient(90deg,transparent,#ff6f5e,transparent);
+             box-shadow:0 0 10px 1px #ff6f5e; animation:scan 2.1s ease-in-out infinite; }
+  @keyframes scan{ 0%{top:16%} 50%{top:84%} 100%{top:16%} }
   /* card + fields */
   .card{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; }
   .card.read{ background:#f3faf5; border-color:#bfe6cd; }
@@ -82,9 +92,14 @@
   <section class="screen on" id="screen-scan">
     <h1 id="t_scan_h"></h1>
     <p class="sub" id="t_scan_sub"></p>
-    <div class="camwrap">
+    <p class="scanlabel" id="t_scanlabel"></p>
+    <div class="slot">
       <video id="video" playsinline muted></video>
-      <div class="guide"><span id="t_guide"></span></div>
+      <div class="frame">
+        <div class="corner tl"></div><div class="corner tr"></div>
+        <div class="corner bl"></div><div class="corner br"></div>
+        <div class="scanline" id="scanline" style="display:none"></div>
+      </div>
     </div>
     <div class="nav">
       <button class="act" id="startBtn"></button>
@@ -245,7 +260,7 @@ function flag(iso){ return iso.replace(/./g,c=>String.fromCodePoint(127397+c.cha
 const T={
  es:{priv:"La verificación ocurre solo en tu teléfono. Ninguna imagen se envía ni se guarda.",
   scan_h:"Escanea tu documento",scan_sub:"Apunta a las 2-3 líneas con «<<<» en la parte inferior del pasaporte o DNI.",
-  guide:"Alinea aquí la zona inferior del documento",start:"Iniciar escáner",manual:"Rellenar a mano",
+  guide:"Encuadra SOLO el código (las 2-3 líneas con «<<<» al pie del pasaporte/DNI)",start:"Iniciar escáner",manual:"Rellenar a mano",
   cf_h:"Confirma tus datos",cf_sub:"Leídos del documento — corrige si hace falta.",cf_card:"✓ Leído del documento",
   nombre:"Nombre",ap1:"Primer apellido",ap2:"Segundo apellido",sexo:"Sexo",dob:"Fecha de nacimiento",
   nac:"Nacionalidad",tdoc:"Tipo de documento",ndoc:"Número de documento",
@@ -262,7 +277,7 @@ const T={
   sel:"Selecciona…",lockhint:"🔒 Documento, fecha y soporte verificados (bloqueados). ✏️ Nombre y apellidos: revísalos y corrige si hace falta."},
  en:{priv:"Scanning happens only on your phone. No image is sent or stored.",
   scan_h:"Scan your document",scan_sub:"Point at the 2-3 lines with «<<<» at the bottom of your passport or ID.",
-  guide:"Align the bottom of the document here",start:"Start scanner",manual:"Fill in manually",
+  guide:"Frame ONLY the code (the 2-3 lines with «<<<» at the bottom of the passport/ID)",start:"Start scanner",manual:"Fill in manually",
   cf_h:"Confirm your details",cf_sub:"Read from the document — edit if needed.",cf_card:"✓ Read from document",
   nombre:"First name",ap1:"Surname",ap2:"Second surname",sexo:"Sex",dob:"Date of birth",
   nac:"Nationality",tdoc:"Document type",ndoc:"Document number",
@@ -282,7 +297,7 @@ let LANG="es";
 function tt(k){ return T[LANG][k]; }
 function applyLang(){
   document.documentElement.lang=LANG;
-  const map={t_priv:"priv",t_scan_h:"scan_h",t_scan_sub:"scan_sub",t_guide:"guide",
+  const map={t_priv:"priv",t_scan_h:"scan_h",t_scan_sub:"scan_sub",t_scanlabel:"guide",
    startBtn:"start",manualBtn:"manual",t_cf_h:"cf_h",t_cf_sub:"cf_sub",t_cf_card:"cf_card",
    l_nombre:"nombre",l_ap1:"ap1",l_ap2:"ap2",l_sexo:"sexo",l_dob:"dob",l_nac:"nac",l_tdoc:"tdoc",l_ndoc:"ndoc",
    cf_back:"back",cf_next:"next",t_lockhint:"lockhint",t_cp_h:"cp_h",t_cp_sub:"cp_sub",t_cp_doc:"cp_doc",l_soporte:"soporte",h_soporte:"h_soporte",
@@ -360,9 +375,15 @@ function tryParse(t){ const L=mrzLines(t); const l44=L.filter(s=>s.length>=42);
   if(l30.length>=3) return parseTD1(...l30.slice(0,3).map(s=>s.padEnd(30,'<').slice(0,30))); return null; }
 async function scanOnce(){ if(busy||found) return; busy=true;
   const vw=video.videoWidth,vh=video.videoHeight; if(!vw){busy=false;return;}
-  const gx=0.04*vw,gw=0.92*vw,gy=0.66*vh,gh=0.20*vh,sc=2;
-  work.width=gw*sc; work.height=gh*sc; const ctx=work.getContext('2d');
-  ctx.drawImage(video,gx,gy,gw,gh,0,0,work.width,work.height);
+  // ritaglia ESATTAMENTE la porzione visibile nella fessura (object-fit: cover)
+  const rect=video.getBoundingClientRect();
+  const elA=(rect.width&&rect.height)?rect.width/rect.height:3, vA=vw/vh;
+  let sx,sy,sw,sh;
+  if(vA>elA){ sh=vh; sw=vh*elA; sx=(vw-sw)/2; sy=0; }
+  else      { sw=vw; sh=vw/elA; sx=0; sy=(vh-sh)/2; }
+  const sc=2; work.width=Math.round(sw*sc); work.height=Math.round(sh*sc);
+  const ctx=work.getContext('2d');
+  ctx.drawImage(video, sx,sy,sw,sh, 0,0, work.width, work.height);
   const im=ctx.getImageData(0,0,work.width,work.height),d=im.data; let sum=0;
   for(let i=0;i<d.length;i+=4){const g=0.3*d[i]+0.59*d[i+1]+0.11*d[i+2]; d[i]=d[i+1]=d[i+2]=g; sum+=g;}
   const thr=(sum/(d.length/4))*0.92;
@@ -378,9 +399,11 @@ async function startScan(){ setStatus(LANG=="es"?"Iniciando cámara…":"Startin
   setStatus(LANG=="es"?"Cargando modelo MRZ (~11 MB, solo la 1ª vez)…":"Loading MRZ model (~11 MB, first time only)…");
   if(!worker){ worker=await Tesseract.createWorker('mrz',1,{langPath:'.',workerPath:'./vendor/worker.min.js',corePath:'./vendor'});
     await worker.setParameters({tessedit_char_whitelist:'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ<',tessedit_pageseg_mode:'6'}); }
-  found=false; setStatus(LANG=="es"?"Escáner activo. Encuadra la zona MRZ.":"Scanner active. Frame the MRZ zone.");
+  found=false; setStatus(LANG=="es"?"Escáner activo. Encuadra el código.":"Scanner active. Frame the code.");
+  $("scanline").style.display="block";
   loop=setInterval(scanOnce,1200); }
-function stopScan(){ clearInterval(loop); loop=null; if(stream){stream.getTracks().forEach(t=>t.stop()); stream=null;} }
+function stopScan(){ clearInterval(loop); loop=null; const sl=$("scanline"); if(sl) sl.style.display="none";
+  if(stream){stream.getTracks().forEach(t=>t.stop()); stream=null;} }
 
 /* ============ stato + flusso ============ */
 const G={};
