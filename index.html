@@ -186,9 +186,10 @@ async function startScan(){
     stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}});
   }catch(e){ setStatus('Camera non disponibile: '+e.message+'  (se sei nell\'app Airbnb/Instagram, apri il link in Safari/Chrome)','warn'); return; }
   video.srcObject=stream; await video.play();
-  setStatus('Inizializzo OCR (primo avvio: ~qualche secondo)…');
+  setStatus('Scarico il modello MRZ (~11 MB, solo al primo avvio)…');
   if(!worker){
-    worker=await Tesseract.createWorker('eng');
+    // modello addestrato su OCR-B/MRZ (DoubangoTelecom), ospitato nel repo → langPath '.'
+    worker=await Tesseract.createWorker('mrz', 1, { langPath: '.' });
     await worker.setParameters({ tessedit_char_whitelist:'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ<',
                                  tessedit_pageseg_mode:'6' });
   }
