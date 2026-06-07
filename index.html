@@ -259,7 +259,7 @@ const T={
   dn_h:"¡Registro completado!",dn_sub:"Gracias. Tus datos han sido registrados.",dn_json:"Datos recogidos (JSON)",
   req_calle:"Introduce la dirección",req_cp:"Código postal no válido",req_ciudad:"Introduce la ciudad",
   req_tel:"Teléfono no válido",req_email:"Email no válido",req_rgpd:"Debes aceptar para continuar",
-  sel:"Selecciona…",lockhint:"🔒 Datos de identidad leídos y verificados del documento: no se pueden modificar ni borrar."},
+  sel:"Selecciona…",lockhint:"🔒 Documento, fecha y soporte verificados (bloqueados). ✏️ Nombre y apellidos: revísalos y corrige si hace falta."},
  en:{priv:"Scanning happens only on your phone. No image is sent or stored.",
   scan_h:"Scan your document",scan_sub:"Point at the 2-3 lines with «<<<» at the bottom of your passport or ID.",
   guide:"Align the bottom of the document here",start:"Start scanner",manual:"Fill in manually",
@@ -276,7 +276,7 @@ const T={
   dn_h:"Registration complete!",dn_sub:"Thank you. Your details have been registered.",dn_json:"Collected data (JSON)",
   req_calle:"Enter the address",req_cp:"Invalid postal code",req_ciudad:"Enter the city",
   req_tel:"Invalid phone",req_email:"Invalid email",req_rgpd:"You must accept to continue",
-  sel:"Select…",lockhint:"🔒 Identity data read and verified from your document: cannot be edited or deleted."}
+  sel:"Select…",lockhint:"🔒 Document, date and support number verified (locked). ✏️ Name and surnames: please review and correct if needed."}
 };
 let LANG="es";
 function tt(k){ return T[LANG][k]; }
@@ -403,10 +403,13 @@ function onScanned(r){
 // blocca i campi estratti dall'MRZ (verificati coi check digit): non modificabili né cancellabili.
 // Per il DNI/NIE spagnolo si estraggono e bloccano anche 2° cognome, tipo doc, n° soporte.
 function lockConfirm(r){
-  ["i_nombre","i_ap1","i_ndoc"].forEach(id=>{ const e=$(id); e.readOnly=true; e.classList.add("locked"); });
+  // Nome e cognomi restano MODIFICABILI: l'MRZ non li protegge con check-digit
+  // (possibili errori OCR, es. "LGARCIA"). Si bloccano solo i campi verificati.
+  ["i_ndoc"].forEach(id=>{ const e=$(id); e.readOnly=true; e.classList.add("locked"); });
   ["i_sexo","i_nac","i_dob"].forEach(id=>{ const e=$(id); e.disabled=true; e.classList.add("locked"); });
+  // nome/cognomi: assicura che siano sbloccati anche dopo un rescan precedente
+  ["i_nombre","i_ap1","i_ap2"].forEach(id=>{ const e=$(id); e.readOnly=false; e.classList.remove("locked"); });
   const es=!!(r&&r.es);
-  const ap2=$("i_ap2"); ap2.readOnly=es; ap2.classList.toggle("locked",es);
   const td=$("i_tdoc"); td.disabled=es; td.classList.toggle("locked",es);
   const sp=$("i_soporte"); sp.readOnly=es; sp.classList.toggle("locked",es);
 }
@@ -471,7 +474,7 @@ function collect(){
     ciudad:$("i_ciudad").value.trim(),
     provincia:prov,
     pais:cName(isoP), pais_iso:isoP,
-    telefono:($("i_pref").value+" "+$("i_tel").value.trim()).trim(),
+    telefono:($("i_pref").value+$("i_tel").value.trim().replace(/\s+/g,"")),
     email:$("i_email").value.trim(),
     rgpd:$("i_rgpd").checked
   };
