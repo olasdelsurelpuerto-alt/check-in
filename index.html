@@ -447,7 +447,8 @@ function dobISO(ddmmyy){ const p=ddmmyy.split('/'); if(p.length!=3) return ""; r
 function onScanned(r){
   G.scan=r;
   // default generico (passaporto / TD1 non-ESP)
-  let ap1=r.surname||"", ap2="", ndoc=r.docnum||"", tdoc=(r.fmt==="TD1"?"DNI":"PASAPORTE"), soporte="";
+  // TD3 = passaporto; TD1 spagnolo (r.es) = DNI/NIE; TD1 straniero = OTRO (niente soporte spagnolo)
+  let ap1=r.surname||"", ap2="", ndoc=r.docnum||"", tdoc=(r.fmt==="TD3"?"PASAPORTE":"OTRO"), soporte="";
   if(r.es){ ap1=r.es.ap1; ap2=r.es.ap2; ndoc=r.es.nif; tdoc=r.es.tipo; soporte=r.es.soporte; }
   $("i_nombre").value=r.given||"";
   $("i_ap1").value=ap1; $("i_ap2").value=ap2;
@@ -560,9 +561,10 @@ function buildFormData(g){
     p.append("entry.308685695_month",String(+m));
     p.append("entry.308685695_day",String(+d)); }
   p.append("entry.852681434", g.nacionalidad);
-  // documento: passaporto -> campo Passport; DNI/NIE -> campo dedicato
-  if(g.tipo_documento==="PASAPORTE") p.append("entry.547321197", g.numero_documento);
-  else p.append("entry.1740367436", g.numero_documento);
+  // documento: SOLO DNI/NIE spagnolo -> campo con validazione ES; tutto il resto
+  // (passaporto + carte d'identita' straniere=OTRO) -> campo Passport (nessuna validazione ES)
+  if(g.tipo_documento==="DNI"||g.tipo_documento==="NIE") p.append("entry.1740367436", g.numero_documento);
+  else p.append("entry.547321197", g.numero_documento);
   if(g.numero_soporte) p.append("entry.364661363", g.numero_soporte);
   p.append("entry.1804243356", g.direccion);
   p.append("entry.394781062", g.cp);
