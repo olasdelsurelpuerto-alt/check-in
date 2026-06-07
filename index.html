@@ -510,6 +510,7 @@ function buildFormData(g){
   p.append("entry.394781062", g.cp);
   p.append("entry.325787827", g.ciudad);
   p.append("entry.506836919", g.pais);
+  if(g.provincia) p.append("entry.977950693", g.provincia);
   p.append("entry.103869547", g.telefono);
   if(g.email) p.append("entry.1475220694", g.email);
   if(g.rgpd) p.append("entry.1921329789", "Acepto / I accept");
