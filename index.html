@@ -105,7 +105,6 @@
       <button class="act" id="startBtn"></button>
     </div>
     <div id="status"></div>
-    <details><summary>Debug (OCR)</summary><pre id="dbg">—</pre></details>
   </section>
 
   <!-- STEP 2 — CONFIRM MRZ -->
@@ -196,7 +195,6 @@
   <!-- DONE -->
   <section class="screen" id="screen-done">
     <div class="done"><div class="big">✅</div><h1 id="t_dn_h"></h1><p class="sub" id="t_dn_sub"></p></div>
-    <details open><summary id="t_dn_json"></summary><pre id="dn_out"></pre></details>
   </section>
 </main>
 
@@ -337,7 +335,7 @@ function showScreen(id,stepNum){
 }
 
 /* ============ MRZ scanner (come prototipo) ============ */
-const video=$("video"), work=$("work"), statusEl=$("status"), dbg=$("dbg");
+const video=$("video"), work=$("work"), statusEl=$("status"), dbg=$("dbg")||{};
 let worker=null, stream=null, busy=false, loop=null, found=false, votes={}; const CONFIRM=3;
 function setStatus(t,cls){ statusEl.textContent=t; statusEl.className=cls||""; }
 function val(c){ if(c>='0'&&c<='9')return c.charCodeAt(0)-48; if(c>='A'&&c<='Z')return c.charCodeAt(0)-55; return 0; }
@@ -550,7 +548,7 @@ function buildFormData(g){
   return p;
 }
 async function send(){
-  const g=G.data; $("dn_out").textContent=JSON.stringify(g,null,2);
+  const g=G.data;
   $("rv_send").disabled=true;
   try{
     await fetch(FORM_ACTION,{method:"POST",mode:"no-cors",
