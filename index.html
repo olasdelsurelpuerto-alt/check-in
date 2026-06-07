@@ -189,8 +189,8 @@
 <script src="./vendor/tesseract.min.js"></script>
 <script>
 /* ============ CONFIG ============ */
-// Endpoint per scrivere nel Google Sheet (Apps Script web-app). Vuoto = mostra solo il JSON.
-const ENDPOINT = "";
+// Opzione A: invio al Google Form esistente -> la riga finisce nello STESSO Google Sheet.
+const FORM_ACTION="https://docs.google.com/forms/d/e/1FAIpQLSeV6HKG4HQRV3GiPvacJTknBhUGN2HtBKRDlaKh-5O6qB4cuQ/formResponse";
 
 /* ============ DATI ============ */
 // paese: [ISO2, ES, EN]  (lista pratica; aggiungibile)
@@ -436,6 +436,17 @@ function validateComplete(){
   set("i_email","e_email", !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test($("i_email").value.trim()), "req_email");
   // país obbligatorio
   if(!$("i_pais").value){ $("i_pais").classList.add("bad"); ok=false; } else $("i_pais").classList.remove("bad");
+  // soporte: deve rispettare il formato richiesto dal Form (evita invii falliti in silenzio).
+  // Se l'OCR avesse prodotto un valore non valido, sblocco il campo per la correzione manuale.
+  if(["DNI","NIE"].includes($("i_tdoc").value)){
+    const sp=$("i_soporte");
+    if(!/^[A-Z][A-Z0-9]{8}$/.test(sp.value.trim())){
+      sp.readOnly=false; sp.classList.remove("locked"); sp.classList.add("bad"); ok=false;
+      $("h_soporte").textContent = LANG=="es"
+        ? "Formato: 9 caracteres, 1ª letra MAYÚSCULA + 8 (ej: CFV153078). Corrígelo."
+        : "Format: 9 chars, 1st UPPERCASE letter + 8 (e.g. CFV153078). Please fix.";
+    } else sp.classList.remove("bad");
+  }
   const r=$("i_rgpd"); if(!r.checked){ $("e_rgpd").textContent=tt("req_rgpd"); $("e_rgpd").classList.add("show"); ok=false; }
   else $("e_rgpd").classList.remove("show");
   return ok;
@@ -476,12 +487,39 @@ function goReview(){
     `<div class="row"><span class="k">${r[0]}</span><span class="v">${g[r[1]]}</span></div>`).join("");
   showScreen("screen-review",4);
 }
+// mappa i dati raccolti sui campi (entry.ID) del Google Form esistente
+function buildFormData(g){
+  const p=new URLSearchParams();
+  p.append("entry.972262734", g.nombre);
+  p.append("entry.365280130", g.primer_apellido);
+  if(g.segundo_apellido) p.append("entry.1333479033", g.segundo_apellido);
+  p.append("entry.1281377465", g.sexo==="F"?"Mujer / woman":g.sexo==="M"?"Hombre / man":"Otro / other");
+  if(g.nacimiento){ const [y,m,d]=g.nacimiento.split("-");
+    p.append("entry.308685695_year",y);
+    p.append("entry.308685695_month",String(+m));
+    p.append("entry.308685695_day",String(+d)); }
+  p.append("entry.852681434", g.nacionalidad);
+  // documento: passaporto -> campo Passport; DNI/NIE -> campo dedicato
+  if(g.tipo_documento==="PASAPORTE") p.append("entry.547321197", g.numero_documento);
+  else p.append("entry.1740367436", g.numero_documento);
+  if(g.numero_soporte) p.append("entry.364661363", g.numero_soporte);
+  p.append("entry.1804243356", g.direccion);
+  p.append("entry.394781062", g.cp);
+  p.append("entry.325787827", g.ciudad);
+  p.append("entry.506836919", g.pais);
+  p.append("entry.103869547", g.telefono);
+  if(g.email) p.append("entry.1475220694", g.email);
+  if(g.rgpd) p.append("entry.1921329789", "Acepto / I accept");
+  return p;
+}
 async function send(){
-  const payload=G.data;
-  $("dn_out").textContent=JSON.stringify(payload,null,2);
-  if(ENDPOINT){
-    try{ await fetch(ENDPOINT,{method:"POST",body:JSON.stringify(payload)}); }catch(e){}
-  }
+  const g=G.data; $("dn_out").textContent=JSON.stringify(g,null,2);
+  $("rv_send").disabled=true;
+  try{
+    await fetch(FORM_ACTION,{method:"POST",mode:"no-cors",
+      headers:{"Content-Type":"application/x-www-form-urlencoded"},
+      body:buildFormData(g).toString()});
+  }catch(e){ /* risposta opaca (no-cors): l'invio al Form avviene comunque */ }
   showScreen("screen-done",4);
 }
 
