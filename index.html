@@ -62,19 +62,14 @@
   .scanprog .bars span{ width:56px; height:9px; border-radius:6px; background:#e7d9bf;
         position:relative; overflow:hidden; transition:background .35s; }
   .scanprog .bars span.fill{ background:linear-gradient(90deg,var(--ocean),var(--ocean2)); }
-  .scanprog .bars span.done{ background:linear-gradient(90deg,#2e9e5b,#46bd74); }
   .scanprog .bars span.active::after{ content:""; position:absolute; inset:0;
         background:linear-gradient(90deg,transparent,rgba(0,150,166,.65),transparent);
         animation:shimmer 1.1s linear infinite; }
   @keyframes shimmer{ 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
   .scanprog .bars span.pop{ animation:pop .5s ease; }
   @keyframes pop{ 0%{transform:scale(1)} 40%{transform:scale(1.25); box-shadow:0 0 12px 2px rgba(0,150,166,.55)} 100%{transform:scale(1)} }
-  .scanprog.ok .bars span.pop{ animation:popg .55s ease; }
-  @keyframes popg{ 0%{transform:scale(1)} 40%{transform:scale(1.28); box-shadow:0 0 14px 3px rgba(46,158,91,.65)} 100%{transform:scale(1)} }
   .scanprog .phrase{ margin-top:10px; font-size:13.5px; color:var(--ocean); font-weight:600; }
   .scanprog .phrase::before{ content:"📖 "; }
-  .scanprog.ok .phrase{ color:#2e9e5b; }
-  .scanprog.ok .phrase::before{ content:""; }
   /* card + fields */
   .card{ background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:15px;
          margin-bottom:12px; box-shadow:var(--shadow); }
@@ -458,11 +453,6 @@ function scanProg(n){ if(!scanprog||n<=curProg) return; // mai indietro: monotò
   spans.forEach((s,i)=>{ s.classList.toggle("fill", i<n); s.classList.toggle("active", i===n && n<CONFIRM); s.classList.remove("done"); });
   if(n>curProg && n>0){ const seg=spans[n-1]; if(seg){ seg.classList.remove("pop"); void seg.offsetWidth; seg.classList.add("pop"); } } // evidenzia la fase appena completata
   curProg=n; }
-function scanDone(){ if(!scanprog) return;
-  scanprog.classList.add("ok");
-  [...scanprog.querySelectorAll(".bars span")].forEach(s=>{ s.classList.remove("active","fill","pop"); void s.offsetWidth; s.classList.add("fill","done","pop"); });
-  const ph=$("t_scanphrase"); if(ph) ph.textContent=tt("readok");
-  curProg=CONFIRM; }
 let worker=null, stream=null, busy=false, loop=null, found=false, votes={}; const CONFIRM=3;
 function setStatus(t,cls){ statusEl.textContent=t; statusEl.className=cls||""; }
 function val(c){ if(c>='0'&&c<='9')return c.charCodeAt(0)-48; if(c>='A'&&c<='Z')return c.charCodeAt(0)-55; return 0; }
@@ -522,7 +512,7 @@ async function scanOnce(){ if(busy||found) return; busy=true;
                                 r.es?[r.es.ap1,r.es.ap2,r.es.nif,r.es.soporte]:0]);
       votes[sig]=(votes[sig]||0)+1;
       const best=Math.max(...Object.values(votes)); // progresso MONOTONO (max raggiunto)
-      if(best>=CONFIRM){ found=true; scanDone(); stopScan(true); setTimeout(()=>onScanned(r),650); }
+      if(best>=CONFIRM){ found=true; scanProg(CONFIRM); stopScan(); onScanned(r); }
       else scanProg(best);
     } else { if(curProg<0) scanProg(0); dbg.textContent=text; }
   }catch(e){ setStatus("OCR: "+e.message,"warn"); } busy=false; }
