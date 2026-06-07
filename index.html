@@ -1,209 +1,476 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Scanner Documento — Prototipo MRZ (on-device)</title>
+<title>Check-in OlasDelSur</title>
 <style>
-  :root{ --ocean:#1b6ca8; --coral:#ff6f5e; --sand:#fff7ec; --ink:#1d2733; }
+  :root{ --ocean:#1b6ca8; --coral:#ff6f5e; --sand:#fff7ec; --card:#ffffff; --ink:#1d2733;
+         --mut:#6b7280; --line:#e7ddcb; --ok:#2e9e5b; }
   *{ box-sizing:border-box; }
   body{ margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-        background:var(--sand); color:var(--ink); }
-  header{ padding:14px 16px; background:var(--ocean); color:#fff; }
-  header h1{ font-size:17px; margin:0 0 4px; }
-  .priv{ font-size:12.5px; opacity:.95; }
+        background:var(--sand); color:var(--ink); -webkit-text-size-adjust:100%; }
+  header{ padding:13px 16px; background:var(--ocean); color:#fff; display:flex; align-items:center; justify-content:space-between; }
+  header .ttl{ font-size:16px; font-weight:700; }
+  header .lang button{ background:rgba(255,255,255,.15); border:0; color:#fff; font-size:12px;
+        padding:5px 9px; border-radius:7px; margin-left:5px; font-weight:600; }
+  header .lang button.on{ background:#fff; color:var(--ocean); }
+  .priv{ font-size:12px; padding:8px 16px; background:#0f5685; color:#dff0ff; }
   .priv b{ color:#ffe9a8; }
   main{ max-width:560px; margin:0 auto; padding:14px; }
-  .camwrap{ position:relative; width:100%; aspect-ratio:3/4; background:#000;
-            border-radius:14px; overflow:hidden; }
+  .steps{ display:flex; gap:6px; margin-bottom:12px; }
+  .steps .s{ flex:1; height:5px; border-radius:5px; background:#e7ddcb; }
+  .steps .s.on{ background:var(--coral); }
+  .screen{ display:none; }
+  .screen.on{ display:block; }
+  h1{ font-size:18px; margin:2px 0 4px; }
+  .sub{ color:var(--mut); font-size:13px; margin:0 0 14px; }
+  /* scanner */
+  .camwrap{ position:relative; width:100%; aspect-ratio:3/4; background:#000; border-radius:14px; overflow:hidden; }
   video{ width:100%; height:100%; object-fit:cover; }
   .guide{ position:absolute; left:4%; right:4%; bottom:14%; height:20%;
-          border:2.5px dashed rgba(255,255,255,.9); border-radius:8px;
-          box-shadow:0 0 0 9999px rgba(0,0,0,.35); }
-  .guide span{ position:absolute; top:-26px; left:0; right:0; text-align:center;
-               color:#fff; font-size:12px; text-shadow:0 1px 3px #000; }
-  .btns{ display:flex; gap:10px; margin:14px 0; }
-  button{ flex:1; padding:13px; border:0; border-radius:11px; font-size:15px;
-          font-weight:600; color:#fff; background:var(--coral); }
-  button.alt{ background:var(--ocean); }
-  button:disabled{ opacity:.45; }
-  #status{ font-size:13px; padding:9px 12px; border-radius:9px; background:#fff;
-           border:1px solid #e7ddcb; min-height:20px; }
-  #status.ok{ background:#e7f7ec; border-color:#9cd9af; }
-  #status.warn{ background:#fff3e0; border-color:#f0c47a; }
-  .fields{ margin-top:14px; display:none; }
-  .fields.show{ display:block; }
-  .fields h2{ font-size:14px; margin:0 0 8px; }
-  .row{ display:flex; gap:8px; margin-bottom:8px; }
-  .row label{ flex:0 0 40%; font-size:13px; align-self:center; color:#5a6675; }
-  .row input{ flex:1; padding:9px; border:1px solid #d9cfbd; border-radius:8px; font-size:14px; }
-  details{ margin-top:14px; font-size:12px; color:#7a7060; }
-  details pre{ white-space:pre-wrap; word-break:break-all; background:#101820; color:#7CFC9B;
-               padding:10px; border-radius:8px; font-size:11px; }
-  .badge{ display:inline-block; font-size:11px; padding:2px 7px; border-radius:20px; }
-  .badge.valid{ background:#9cd9af; color:#0a3d1c; }
-  .badge.invalid{ background:#f3b0a8; color:#5a1410; }
+          border:2.5px dashed rgba(255,255,255,.9); border-radius:8px; box-shadow:0 0 0 9999px rgba(0,0,0,.35); }
+  .guide span{ position:absolute; top:-26px; left:0; right:0; text-align:center; color:#fff; font-size:12px; text-shadow:0 1px 3px #000; }
+  /* card + fields */
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; }
+  .card.read{ background:#f3faf5; border-color:#bfe6cd; }
+  .card h2{ font-size:13px; margin:0 0 12px; text-transform:uppercase; letter-spacing:.04em; color:var(--ocean); }
+  .card.read h2{ color:var(--ok); }
+  .fld{ margin-bottom:12px; }
+  .fld:last-child{ margin-bottom:0; }
+  label{ display:block; font-size:12.5px; color:var(--mut); margin-bottom:4px; font-weight:600; }
+  label .req{ color:var(--coral); }
+  input,select{ width:100%; padding:11px; border:1px solid #d9cfbd; border-radius:9px; font-size:16px; background:#fff; color:var(--ink); }
+  input:focus,select:focus{ outline:none; border-color:var(--ocean); }
+  input.bad,select.bad{ border-color:var(--coral); background:#fff5f3; }
+  .err{ color:var(--coral); font-size:11.5px; margin-top:3px; display:none; }
+  .err.show{ display:block; }
+  .two{ display:flex; gap:10px; } .two>*{ flex:1; }
+  .phone{ display:flex; gap:8px; } .phone .pref{ flex:0 0 92px; }
+  .chk{ display:flex; gap:10px; align-items:flex-start; font-size:13px; color:var(--ink); }
+  .chk input{ width:20px; height:20px; flex:none; margin-top:1px; }
+  .hint{ font-size:11.5px; color:var(--mut); margin-top:4px; }
+  .copybtn{ background:#eef5fb; color:var(--ocean); border:1px solid #cfe2f2; border-radius:8px; padding:8px 10px; font-size:12.5px; font-weight:600; margin-bottom:12px; width:100%; }
+  /* buttons / nav */
+  .nav{ display:flex; gap:10px; margin-top:8px; }
+  button.act{ flex:1; padding:14px; border:0; border-radius:12px; font-size:15px; font-weight:700; color:#fff; background:var(--coral); }
+  button.ghost{ background:#ede4d2; color:var(--ink); flex:0 0 38%; }
+  button.act:disabled{ opacity:.45; }
+  #status{ font-size:13px; padding:9px 12px; border-radius:9px; background:#fff; border:1px solid var(--line); margin-top:12px; min-height:20px; }
+  #status.ok{ background:#e7f7ec; border-color:#9cd9af; } #status.warn{ background:#fff3e0; border-color:#f0c47a; }
+  .review .row{ display:flex; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); font-size:13.5px; }
+  .review .row .k{ color:var(--mut); } .review .row .v{ font-weight:600; text-align:right; }
+  .done{ text-align:center; padding:30px 10px; } .done .big{ font-size:46px; }
+  pre{ white-space:pre-wrap; word-break:break-all; background:#101820; color:#7CFC9B; padding:10px; border-radius:8px; font-size:11px; }
+  details{ margin-top:12px; font-size:12px; color:#7a7060; }
 </style>
 </head>
 <body>
 <header>
-  <h1>🛂 Scanner Documento — Prototipo</h1>
-  <div class="priv">🔒 La scansione avviene <b>solo sul tuo telefono</b>. Nessuna immagine viene inviata o salvata.</div>
+  <div class="ttl">🌊 OlasDelSur · Check-in</div>
+  <div class="lang"><button id="lang-es" class="on">ES</button><button id="lang-en">EN</button></div>
 </header>
+<div class="priv" id="privbar">🔒 <b id="t_priv"></b></div>
 
 <main>
-  <div class="camwrap">
-    <video id="video" playsinline muted></video>
-    <div class="guide"><span>Allinea qui le 2-3 righe in fondo al documento</span></div>
-  </div>
+  <div class="steps"><div class="s on" data-st="1"></div><div class="s" data-st="2"></div><div class="s" data-st="3"></div><div class="s" data-st="4"></div></div>
 
-  <div class="btns">
-    <button id="start">Avvia scanner</button>
-    <button id="stop" class="alt" disabled>Stop</button>
-  </div>
+  <!-- STEP 1 — SCANNER -->
+  <section class="screen on" id="screen-scan">
+    <h1 id="t_scan_h"></h1>
+    <p class="sub" id="t_scan_sub"></p>
+    <div class="camwrap">
+      <video id="video" playsinline muted></video>
+      <div class="guide"><span id="t_guide"></span></div>
+    </div>
+    <div class="nav">
+      <button class="act" id="startBtn"></button>
+      <button class="ghost" id="manualBtn"></button>
+    </div>
+    <div id="status"></div>
+    <details><summary>Debug (OCR)</summary><pre id="dbg">—</pre></details>
+  </section>
 
-  <div id="status">Premi «Avvia scanner» e inquadra la zona MRZ (le righe con i &lt;&lt;&lt;).</div>
+  <!-- STEP 2 — CONFIRM MRZ -->
+  <section class="screen" id="screen-confirm">
+    <h1 id="t_cf_h"></h1>
+    <p class="sub" id="t_cf_sub"></p>
+    <div class="card read">
+      <h2 id="t_cf_card"></h2>
+      <div class="fld"><label id="l_nombre"></label><input id="i_nombre"></div>
+      <div class="two">
+        <div class="fld"><label id="l_ap1"></label><input id="i_ap1"></div>
+        <div class="fld"><label id="l_ap2"></label><input id="i_ap2"></div>
+      </div>
+      <div class="two">
+        <div class="fld"><label id="l_sexo"></label>
+          <select id="i_sexo"><option value="M">M</option><option value="F">F</option><option value="X">X</option></select></div>
+        <div class="fld"><label id="l_dob"></label><input id="i_dob" type="date"></div>
+      </div>
+      <div class="fld"><label id="l_nac"></label><select id="i_nac"></select></div>
+      <div class="two">
+        <div class="fld"><label id="l_tdoc"></label><select id="i_tdoc"></select></div>
+        <div class="fld"><label id="l_ndoc"></label><input id="i_ndoc"></div>
+      </div>
+    </div>
+    <div class="nav">
+      <button class="ghost" id="cf_back"></button>
+      <button class="act" id="cf_next"></button>
+    </div>
+  </section>
 
-  <div class="fields" id="fields">
-    <h2>Campi estratti <span id="vbadge" class="badge"></span></h2>
-    <div class="row"><label>Tipo / Formato</label><input id="f_type" readonly></div>
-    <div class="row"><label>Cognome</label><input id="f_surname"></div>
-    <div class="row"><label>Nome</label><input id="f_given"></div>
-    <div class="row"><label>N° documento</label><input id="f_docnum"></div>
-    <div class="row"><label>Nazionalità</label><input id="f_nat"></div>
-    <div class="row"><label>Data nascita</label><input id="f_dob"></div>
-    <div class="row"><label>Sesso</label><input id="f_sex"></div>
-    <div class="row"><label>Scadenza</label><input id="f_exp"></div>
-  </div>
+  <!-- STEP 3 — COMPLETE -->
+  <section class="screen" id="screen-complete">
+    <h1 id="t_cp_h"></h1>
+    <p class="sub" id="t_cp_sub"></p>
+    <div class="card">
+      <h2 id="t_cp_doc"></h2>
+      <div class="fld" id="wrap_soporte">
+        <label id="l_soporte"></label><input id="i_soporte">
+        <div class="hint" id="h_soporte"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2 id="t_cp_addr"></h2>
+      <div class="fld"><label id="l_calle"></label><input id="i_calle">
+        <div class="err" id="e_calle"></div></div>
+      <div class="two">
+        <div class="fld"><label id="l_cp"></label><input id="i_cp" inputmode="numeric">
+          <div class="err" id="e_cp"></div></div>
+        <div class="fld"><label id="l_ciudad"></label><input id="i_ciudad">
+          <div class="err" id="e_ciudad"></div></div>
+      </div>
+      <div class="two">
+        <div class="fld"><label id="l_pais"></label><select id="i_pais"></select></div>
+        <div class="fld"><label id="l_prov"></label>
+          <input id="i_prov"><select id="i_prov_sel" style="display:none"></select></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2 id="t_cp_contact"></h2>
+      <div class="fld"><label id="l_tel"></label>
+        <div class="phone"><input class="pref" id="i_pref" readonly><input id="i_tel" inputmode="tel"></div>
+        <div class="err" id="e_tel"></div></div>
+      <div class="fld"><label id="l_email"></label><input id="i_email" type="email" inputmode="email">
+        <div class="err" id="e_email"></div></div>
+    </div>
+    <div class="card">
+      <label class="chk"><input type="checkbox" id="i_rgpd"><span id="t_rgpd"></span></label>
+      <div class="err" id="e_rgpd"></div>
+    </div>
+    <div class="nav">
+      <button class="ghost" id="cp_back"></button>
+      <button class="act" id="cp_next"></button>
+    </div>
+  </section>
 
-  <details>
-    <summary>Debug (OCR grezzo + check digit)</summary>
-    <pre id="dbg">—</pre>
-  </details>
+  <!-- STEP 4 — REVIEW -->
+  <section class="screen" id="screen-review">
+    <h1 id="t_rv_h"></h1>
+    <p class="sub" id="t_rv_sub"></p>
+    <div class="card review" id="rv_body"></div>
+    <div class="nav">
+      <button class="ghost" id="rv_back"></button>
+      <button class="act" id="rv_send"></button>
+    </div>
+  </section>
+
+  <!-- DONE -->
+  <section class="screen" id="screen-done">
+    <div class="done"><div class="big">✅</div><h1 id="t_dn_h"></h1><p class="sub" id="t_dn_sub"></p></div>
+    <details open><summary id="t_dn_json"></summary><pre id="dn_out"></pre></details>
+  </section>
 </main>
 
 <canvas id="work" hidden></canvas>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
-const video=document.getElementById('video'), work=document.getElementById('work');
-const startBtn=document.getElementById('start'), stopBtn=document.getElementById('stop');
-const statusEl=document.getElementById('status'), dbg=document.getElementById('dbg');
-const fieldsEl=document.getElementById('fields'), vbadge=document.getElementById('vbadge');
+/* ============ CONFIG ============ */
+// Endpoint per scrivere nel Google Sheet (Apps Script web-app). Vuoto = mostra solo il JSON.
+const ENDPOINT = "";
+
+/* ============ DATI ============ */
+// paese: [ISO2, ES, EN]  (lista pratica; aggiungibile)
+const COUNTRIES=[["ES","España","Spain"],["IT","Italia","Italy"],["PT","Portugal","Portugal"],
+["FR","Francia","France"],["DE","Alemania","Germany"],["GB","Reino Unido","United Kingdom"],
+["IE","Irlanda","Ireland"],["NL","Países Bajos","Netherlands"],["BE","Bélgica","Belgium"],
+["LU","Luxemburgo","Luxembourg"],["CH","Suiza","Switzerland"],["AT","Austria","Austria"],
+["DK","Dinamarca","Denmark"],["SE","Suecia","Sweden"],["NO","Noruega","Norway"],
+["FI","Finlandia","Finland"],["IS","Islandia","Iceland"],["PL","Polonia","Poland"],
+["CZ","Chequia","Czechia"],["SK","Eslovaquia","Slovakia"],["HU","Hungría","Hungary"],
+["RO","Rumanía","Romania"],["BG","Bulgaria","Bulgaria"],["GR","Grecia","Greece"],
+["HR","Croacia","Croatia"],["SI","Eslovenia","Slovenia"],["RS","Serbia","Serbia"],
+["EE","Estonia","Estonia"],["LV","Letonia","Latvia"],["LT","Lituania","Lithuania"],
+["UA","Ucrania","Ukraine"],["RU","Rusia","Russia"],["TR","Turquía","Türkiye"],
+["US","Estados Unidos","United States"],["CA","Canadá","Canada"],["MX","México","Mexico"],
+["BR","Brasil","Brazil"],["AR","Argentina","Argentina"],["CL","Chile","Chile"],
+["CO","Colombia","Colombia"],["PE","Perú","Peru"],["UY","Uruguay","Uruguay"],
+["VE","Venezuela","Venezuela"],["EC","Ecuador","Ecuador"],["MA","Marruecos","Morocco"],
+["DZ","Argelia","Algeria"],["TN","Túnez","Tunisia"],["EG","Egipto","Egypt"],
+["ZA","Sudáfrica","South Africa"],["NG","Nigeria","Nigeria"],["IL","Israel","Israel"],
+["AE","Emiratos Árabes","UAE"],["SA","Arabia Saudí","Saudi Arabia"],["IN","India","India"],
+["PK","Pakistán","Pakistan"],["CN","China","China"],["JP","Japón","Japan"],
+["KR","Corea del Sur","South Korea"],["TH","Tailandia","Thailand"],["VN","Vietnam","Vietnam"],
+["ID","Indonesia","Indonesia"],["PH","Filipinas","Philippines"],["MY","Malasia","Malaysia"],
+["SG","Singapur","Singapore"],["AU","Australia","Australia"],["NZ","Nueva Zelanda","New Zealand"]];
+// ICAO 3 lettere -> ISO2 (le più comuni)
+const ICAO2ISO={ESP:"ES",ITA:"IT",PRT:"PT",FRA:"FR",DEU:"DE",GBR:"GB",IRL:"IE",NLD:"NL",BEL:"BE",
+CHE:"CH",AUT:"AT",DNK:"DK",SWE:"SE",NOR:"NO",FIN:"FI",POL:"PL",CZE:"CZ",GRC:"GR",HRV:"HR",
+ROU:"RO",HUN:"HU",USA:"US",CAN:"CA",MEX:"MX",BRA:"BR",ARG:"AR",CHL:"CL",COL:"CO",PER:"PE",
+MAR:"MA",DZA:"DZ",CHN:"CN",JPN:"JP",KOR:"KR",IND:"IN",AUS:"AU",NZL:"NZ",RUS:"RU",UKR:"UA",TUR:"TR"};
+// ISO2 -> prefisso telefonico
+const DIAL={ES:"+34",IT:"+39",PT:"+351",FR:"+33",DE:"+49",GB:"+44",IE:"+353",NL:"+31",BE:"+32",
+LU:"+352",CH:"+41",AT:"+43",DK:"+45",SE:"+46",NO:"+47",FI:"+358",IS:"+354",PL:"+48",CZ:"+420",
+SK:"+421",HU:"+36",RO:"+40",BG:"+359",GR:"+30",HR:"+385",SI:"+386",RS:"+381",EE:"+372",LV:"+371",
+LT:"+370",UA:"+380",RU:"+7",TR:"+90",US:"+1",CA:"+1",MX:"+52",BR:"+55",AR:"+54",CL:"+56",CO:"+57",
+PE:"+51",UY:"+598",VE:"+58",EC:"+593",MA:"+212",DZ:"+213",TN:"+216",EG:"+20",ZA:"+27",NG:"+234",
+IL:"+972",AE:"+971",SA:"+966",IN:"+91",PK:"+92",CN:"+86",JP:"+81",KR:"+82",TH:"+66",VN:"+84",
+ID:"+62",PH:"+63",MY:"+60",SG:"+65",AU:"+61",NZ:"+64"};
+const PROV_ES=["Álava","Albacete","Alicante","Almería","Asturias","Ávila","Badajoz","Baleares",
+"Barcelona","Burgos","Cáceres","Cádiz","Cantabria","Castellón","Ciudad Real","Córdoba","Cuenca",
+"Gerona","Granada","Guadalajara","Guipúzcoa","Huelva","Huesca","Jaén","La Coruña","La Rioja",
+"Las Palmas","León","Lérida","Lugo","Madrid","Málaga","Murcia","Navarra","Orense","Palencia",
+"Pontevedra","Salamanca","Santa Cruz de Tenerife","Segovia","Sevilla","Soria","Tarragona",
+"Teruel","Toledo","Valencia","Valladolid","Vizcaya","Zamora","Zaragoza"];
+const DOCTYPES=[["PASAPORTE","Pasaporte","Passport"],["DNI","DNI","National ID (DNI)"],
+["NIE","NIE","Foreigner ID (NIE)"],["PERMISO_CONDUCIR","Permiso de conducir","Driving licence"],
+["OTRO","Otro","Other"]];
+
+function flag(iso){ return iso.replace(/./g,c=>String.fromCodePoint(127397+c.charCodeAt())); }
+
+/* ============ i18n ============ */
+const T={
+ es:{priv:"La verificación ocurre solo en tu teléfono. Ninguna imagen se envía ni se guarda.",
+  scan_h:"Escanea tu documento",scan_sub:"Apunta a las 2-3 líneas con «<<<» en la parte inferior del pasaporte o DNI.",
+  guide:"Alinea aquí la zona inferior del documento",start:"Iniciar escáner",manual:"Rellenar a mano",
+  cf_h:"Confirma tus datos",cf_sub:"Leídos del documento — corrige si hace falta.",cf_card:"✓ Leído del documento",
+  nombre:"Nombre",ap1:"Primer apellido",ap2:"Segundo apellido",sexo:"Sexo",dob:"Fecha de nacimiento",
+  nac:"Nacionalidad",tdoc:"Tipo de documento",ndoc:"Número de documento",
+  back:"Atrás",next:"Continuar",
+  cp_h:"Completa la información",cp_sub:"Solo faltan estos datos, obligatorios por ley (RD 933/2021).",
+  cp_doc:"Documento",soporte:"Número de soporte",h_soporte:"Está en el anverso del DNI/NIE (sigla tipo IDESP/IXESP).",
+  cp_addr:"Dirección de residencia",calle:"Calle y número",cpc:"Código postal",ciudad:"Ciudad",
+  pais:"País",prov:"Provincia",cp_contact:"Contacto",tel:"Teléfono móvil",email:"Email",
+  rgpd:"Acepto el tratamiento de mis datos para el registro obligatorio de viajeros (RD 933/2021).",
+  rv_h:"Revisa y envía",rv_sub:"Comprueba que todo sea correcto.",send:"Enviar registro",
+  dn_h:"¡Registro completado!",dn_sub:"Gracias. Tus datos han sido registrados.",dn_json:"Datos recogidos (JSON)",
+  req_calle:"Introduce la dirección",req_cp:"Código postal no válido",req_ciudad:"Introduce la ciudad",
+  req_tel:"Teléfono no válido",req_email:"Email no válido",req_rgpd:"Debes aceptar para continuar",
+  sel:"Selecciona…"},
+ en:{priv:"Scanning happens only on your phone. No image is sent or stored.",
+  scan_h:"Scan your document",scan_sub:"Point at the 2-3 lines with «<<<» at the bottom of your passport or ID.",
+  guide:"Align the bottom of the document here",start:"Start scanner",manual:"Fill in manually",
+  cf_h:"Confirm your details",cf_sub:"Read from the document — edit if needed.",cf_card:"✓ Read from document",
+  nombre:"First name",ap1:"Surname",ap2:"Second surname",sexo:"Sex",dob:"Date of birth",
+  nac:"Nationality",tdoc:"Document type",ndoc:"Document number",
+  back:"Back",next:"Continue",
+  cp_h:"Complete your info",cp_sub:"Only these details are missing, required by law (RD 933/2021).",
+  cp_doc:"Document",soporte:"Support number",h_soporte:"On the front of the DNI/NIE (code like IDESP/IXESP).",
+  cp_addr:"Home address",calle:"Street and number",cpc:"Postal code",ciudad:"City",
+  pais:"Country",prov:"Province / Region",cp_contact:"Contact",tel:"Mobile phone",email:"Email",
+  rgpd:"I agree to the processing of my data for the mandatory traveler registration (RD 933/2021).",
+  rv_h:"Review and submit",rv_sub:"Check everything is correct.",send:"Submit registration",
+  dn_h:"Registration complete!",dn_sub:"Thank you. Your details have been registered.",dn_json:"Collected data (JSON)",
+  req_calle:"Enter the address",req_cp:"Invalid postal code",req_ciudad:"Enter the city",
+  req_tel:"Invalid phone",req_email:"Invalid email",req_rgpd:"You must accept to continue",
+  sel:"Select…"}
+};
+let LANG="es";
+function tt(k){ return T[LANG][k]; }
+function applyLang(){
+  document.documentElement.lang=LANG;
+  const map={t_priv:"priv",t_scan_h:"scan_h",t_scan_sub:"scan_sub",t_guide:"guide",
+   startBtn:"start",manualBtn:"manual",t_cf_h:"cf_h",t_cf_sub:"cf_sub",t_cf_card:"cf_card",
+   l_nombre:"nombre",l_ap1:"ap1",l_ap2:"ap2",l_sexo:"sexo",l_dob:"dob",l_nac:"nac",l_tdoc:"tdoc",l_ndoc:"ndoc",
+   cf_back:"back",cf_next:"next",t_cp_h:"cp_h",t_cp_sub:"cp_sub",t_cp_doc:"cp_doc",l_soporte:"soporte",h_soporte:"h_soporte",
+   t_cp_addr:"cp_addr",l_calle:"calle",l_cp:"cpc",l_ciudad:"ciudad",l_pais:"pais",l_prov:"prov",
+   t_cp_contact:"cp_contact",l_tel:"tel",l_email:"email",t_rgpd:"rgpd",
+   cp_back:"back",cp_next:"next",t_rv_h:"rv_h",t_rv_sub:"rv_sub",rv_back:"back",rv_send:"send",
+   t_dn_h:"dn_h",t_dn_sub:"dn_sub",t_dn_json:"dn_json"};
+  for(const id in map){ const el=document.getElementById(id); if(el) el.textContent=tt(map[id]); }
+  fillCountrySelects(); fillDocTypes(); fillProv();
+}
+
+/* ============ helpers UI ============ */
+const $=id=>document.getElementById(id);
+function fillCountrySelects(){
+  [["i_nac",false],["i_pais",false]].forEach(([id])=>{
+    const sel=$(id), cur=sel.value;
+    sel.innerHTML='<option value="">'+tt("sel")+'</option>'+
+      COUNTRIES.map(c=>`<option value="${c[0]}">${flag(c[0])} ${LANG=="es"?c[1]:c[2]}</option>`).join("");
+    sel.value=cur;
+  });
+}
+function fillDocTypes(){
+  const sel=$("i_tdoc"), cur=sel.value;
+  sel.innerHTML=DOCTYPES.map(d=>`<option value="${d[0]}">${LANG=="es"?d[1]:d[2]}</option>`).join("");
+  sel.value=cur||"PASAPORTE";
+}
+function fillProv(){
+  const sel=$("i_prov_sel"), cur=sel.value;
+  sel.innerHTML='<option value="">'+tt("sel")+'</option>'+PROV_ES.map(p=>`<option>${p}</option>`).join("");
+  sel.value=cur;
+}
+function showScreen(id,stepNum){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("on"));
+  $(id).classList.add("on");
+  document.querySelectorAll(".steps .s").forEach(s=>s.classList.toggle("on", +s.dataset.st<=stepNum));
+  window.scrollTo(0,0);
+}
+
+/* ============ MRZ scanner (come prototipo) ============ */
+const video=$("video"), work=$("work"), statusEl=$("status"), dbg=$("dbg");
 let worker=null, stream=null, busy=false, loop=null, found=false;
-
-function setStatus(t,cls){ statusEl.textContent=t; statusEl.className=cls||''; }
-
-// ---- MRZ check-digit (ICAO 9303): pesi 7-3-1, mod 10 ----
+function setStatus(t,cls){ statusEl.textContent=t; statusEl.className=cls||""; }
 function val(c){ if(c>='0'&&c<='9')return c.charCodeAt(0)-48; if(c>='A'&&c<='Z')return c.charCodeAt(0)-55; return 0; }
-function cd(str){ const w=[7,3,1]; let s=0; for(let i=0;i<str.length;i++) s+=val(str[i])*w[i%3]; return s%10; }
-function ck(str,d){ return String(cd(str))===d; }
-function ymd(s){ return s.length===6? `${s.slice(4)}/${s.slice(2,4)}/${s.slice(0,2)}` : s; } // YYMMDD -> DD/MM/YY
-function names(field){ const p=field.split('<<'); return { surname:(p[0]||'').replace(/</g,' ').trim(),
-                       given:(p[1]||'').replace(/</g,' ').trim() }; }
-
-// ---- Parser TD3 (passaporto 2x44) e TD1 (carta/DNI 3x30) ----
-function parseTD3(l1,l2){
-  const docnum=l2.slice(0,9), cdoc=l2[9], nat=l2.slice(10,13);
-  const dob=l2.slice(13,19), cdob=l2[19], sex=l2[20], exp=l2.slice(21,27), cexp=l2[27];
-  const opt=l2.slice(28,42), copt=l2[42], comp=l2[43];
-  const compStr=l2.slice(0,10)+l2.slice(13,20)+l2.slice(21,28)+l2.slice(28,43);
-  const checks={doc:ck(docnum,cdoc), dob:ck(dob,cdob), exp:ck(exp,cexp), comp:ck(compStr,comp)};
-  const nm=names(l1.slice(5));
-  return { fmt:'TD3 (Passaporto)', ...nm, docnum:docnum.replace(/</g,''), nat, dob:ymd(dob),
-           sex:sex.replace(/</g,''), exp:ymd(exp), checks };
-}
-function parseTD1(l1,l2,l3){
-  const docnum=l1.slice(5,14), cdoc=l1[14];
-  const dob=l2.slice(0,6), cdob=l2[6], sex=l2[7], exp=l2.slice(8,14), cexp=l2[14], nat=l2.slice(15,18);
-  const comp=l2[29];
-  const compStr=l1.slice(5,30)+l2.slice(0,7)+l2.slice(8,15)+l2.slice(18,29);
-  const checks={doc:ck(docnum,cdoc), dob:ck(dob,cdob), exp:ck(exp,cexp), comp:ck(compStr,comp)};
-  const nm=names(l3);
-  return { fmt:'TD1 (Carta/DNI)', ...nm, docnum:docnum.replace(/</g,''), nat, dob:ymd(dob),
-           sex:sex.replace(/</g,''), exp:ymd(exp), checks };
-}
-
-// estrae righe candidate MRZ dal testo OCR
-function mrzLines(text){
-  return text.toUpperCase().split('\n')
-    .map(s=>s.replace(/[^A-Z0-9<]/g,''))      // tieni solo caratteri MRZ
-    .filter(s=>s.length>=28 && s.length<=46 && (s.match(/</g)||[]).length>=2);
-}
-function tryParse(text){
-  const lines=mrzLines(text);
-  // TD3: due righe ~44
-  const l44=lines.filter(s=>s.length>=42);
-  if(l44.length>=2) return parseTD3(l44[0].padEnd(44,'<').slice(0,44), l44[1].padEnd(44,'<').slice(0,44));
-  // TD1: tre righe ~30
-  const l30=lines.filter(s=>s.length>=28&&s.length<=32);
-  if(l30.length>=3) return parseTD1(...l30.slice(0,3).map(s=>s.padEnd(30,'<').slice(0,30)));
-  return null;
-}
-
-function show(r,rawText){
-  const allOK=Object.values(r.checks).every(Boolean);
-  vbadge.textContent=allOK?'check digit OK ✓':'check digit parziali';
-  vbadge.className='badge '+(allOK?'valid':'invalid');
-  f_type.value=r.fmt; f_surname.value=r.surname; f_given.value=r.given;
-  f_docnum.value=r.docnum; f_nat.value=r.nat; f_dob.value=r.dob; f_sex.value=r.sex; f_exp.value=r.exp;
-  fieldsEl.classList.add('show');
-  dbg.textContent='OCR grezzo:\n'+rawText+'\n\ncheck digits: '+JSON.stringify(r.checks);
-  setStatus(allOK? '✅ MRZ riconosciuta e validata. Controlla i campi.'
-                 : '⚠️ MRZ letta ma alcuni check digit non tornano — riprova o correggi a mano.',
-            allOK?'ok':'warn');
-}
-
-// cattura il riquadro guida, pre-processa (grigio + soglia + upscale) e fa OCR
-async function scanOnce(){
-  if(busy||found) return; busy=true;
-  const vw=video.videoWidth, vh=video.videoHeight;
-  if(!vw){ busy=false; return; }
-  const gx=0.04*vw, gw=0.92*vw, gy=0.66*vh, gh=0.20*vh;   // = riquadro .guide
-  const scale=2;
-  work.width=gw*scale; work.height=gh*scale;
-  const ctx=work.getContext('2d');
-  ctx.drawImage(video, gx,gy,gw,gh, 0,0, work.width,work.height);
-  // grigio + soglia adattiva semplice
-  const img=ctx.getImageData(0,0,work.width,work.height), d=img.data; let sum=0;
-  for(let i=0;i<d.length;i+=4){ const g=0.3*d[i]+0.59*d[i+1]+0.11*d[i+2]; d[i]=d[i+1]=d[i+2]=g; sum+=g; }
+function cd(s){ const w=[7,3,1]; let x=0; for(let i=0;i<s.length;i++) x+=val(s[i])*w[i%3]; return x%10; }
+function ck(s,d){ return String(cd(s))===d; }
+function ymd(s){ return s.length===6? `${s.slice(4)}/${s.slice(2,4)}/${s.slice(0,2)}`:s; }
+function names(f){ const p=f.split('<<'); return {surname:(p[0]||'').replace(/</g,' ').trim(), given:(p[1]||'').replace(/</g,' ').trim()}; }
+function parseTD3(l1,l2){ const dn=l2.slice(0,9),cdn=l2[9],nat=l2.slice(10,13),dob=l2.slice(13,19),cdob=l2[19],
+  sex=l2[20],exp=l2.slice(21,27),cexp=l2[27],comp=l2[43];
+  const cs=l2.slice(0,10)+l2.slice(13,20)+l2.slice(21,28)+l2.slice(28,43);
+  const checks={doc:ck(dn,cdn),dob:ck(dob,cdob),exp:ck(exp,cexp),comp:ck(cs,comp)};
+  return {fmt:"TD3",...names(l1.slice(5)),docnum:dn.replace(/</g,''),nat,dob:ymd(dob),sex:sex.replace(/</g,''),checks}; }
+function parseTD1(l1,l2,l3){ const dn=l1.slice(5,14),cdn=l1[14],dob=l2.slice(0,6),cdob=l2[6],sex=l2[7],
+  exp=l2.slice(8,14),cexp=l2[14],nat=l2.slice(15,18),comp=l2[29];
+  const cs=l1.slice(5,30)+l2.slice(0,7)+l2.slice(8,15)+l2.slice(18,29);
+  const checks={doc:ck(dn,cdn),dob:ck(dob,cdob),exp:ck(exp,cexp),comp:ck(cs,comp)};
+  return {fmt:"TD1",...names(l3),docnum:dn.replace(/</g,''),nat,dob:ymd(dob),sex:sex.replace(/</g,''),checks}; }
+function mrzLines(t){ return t.toUpperCase().split('\n').map(s=>s.replace(/[^A-Z0-9<]/g,''))
+  .filter(s=>s.length>=28&&s.length<=46&&(s.match(/</g)||[]).length>=2); }
+function tryParse(t){ const L=mrzLines(t); const l44=L.filter(s=>s.length>=42);
+  if(l44.length>=2) return parseTD3(l44[0].padEnd(44,'<').slice(0,44),l44[1].padEnd(44,'<').slice(0,44));
+  const l30=L.filter(s=>s.length>=28&&s.length<=32);
+  if(l30.length>=3) return parseTD1(...l30.slice(0,3).map(s=>s.padEnd(30,'<').slice(0,30))); return null; }
+async function scanOnce(){ if(busy||found) return; busy=true;
+  const vw=video.videoWidth,vh=video.videoHeight; if(!vw){busy=false;return;}
+  const gx=0.04*vw,gw=0.92*vw,gy=0.66*vh,gh=0.20*vh,sc=2;
+  work.width=gw*sc; work.height=gh*sc; const ctx=work.getContext('2d');
+  ctx.drawImage(video,gx,gy,gw,gh,0,0,work.width,work.height);
+  const im=ctx.getImageData(0,0,work.width,work.height),d=im.data; let sum=0;
+  for(let i=0;i<d.length;i+=4){const g=0.3*d[i]+0.59*d[i+1]+0.11*d[i+2]; d[i]=d[i+1]=d[i+2]=g; sum+=g;}
   const thr=(sum/(d.length/4))*0.92;
-  for(let i=0;i<d.length;i+=4){ const v=d[i]<thr?0:255; d[i]=d[i+1]=d[i+2]=v; }
-  ctx.putImageData(img,0,0);
-  try{
-    const {data:{text}}=await worker.recognize(work);
-    const r=tryParse(text);
-    if(r){ const allOK=Object.values(r.checks).every(Boolean);
-           show(r,text);
-           if(allOK){ found=true; stopScan(); } }   // stop solo se pienamente valida
-    else { setStatus('Cerco la zona MRZ… tieni il documento fermo e ben illuminato.'); dbg.textContent=text; }
-  }catch(e){ setStatus('Errore OCR: '+e.message,'warn'); }
-  busy=false;
+  for(let i=0;i<d.length;i+=4){const v=d[i]<thr?0:255; d[i]=d[i+1]=d[i+2]=v;} ctx.putImageData(im,0,0);
+  try{ const {data:{text}}=await worker.recognize(work); const r=tryParse(text);
+    if(r){ dbg.textContent=text; if(Object.values(r.checks).every(Boolean)){ found=true; stopScan(); onScanned(r); } }
+    else { setStatus(LANG=="es"?"Buscando la zona MRZ…":"Looking for the MRZ zone…"); dbg.textContent=text; }
+  }catch(e){ setStatus("OCR: "+e.message,"warn"); } busy=false; }
+async function startScan(){ setStatus(LANG=="es"?"Iniciando cámara…":"Starting camera…");
+  try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}}); }
+  catch(e){ setStatus((LANG=="es"?"Cámara no disponible. Abre el enlace en Safari/Chrome. ":"Camera unavailable. Open the link in Safari/Chrome. ")+e.message,"warn"); return; }
+  video.srcObject=stream; await video.play();
+  setStatus(LANG=="es"?"Cargando modelo MRZ (~11 MB, solo la 1ª vez)…":"Loading MRZ model (~11 MB, first time only)…");
+  if(!worker){ worker=await Tesseract.createWorker('mrz',1,{langPath:'.'});
+    await worker.setParameters({tessedit_char_whitelist:'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ<',tessedit_pageseg_mode:'6'}); }
+  found=false; setStatus(LANG=="es"?"Escáner activo. Encuadra la zona MRZ.":"Scanner active. Frame the MRZ zone.");
+  loop=setInterval(scanOnce,1200); }
+function stopScan(){ clearInterval(loop); loop=null; if(stream){stream.getTracks().forEach(t=>t.stop()); stream=null;} }
+
+/* ============ stato + flusso ============ */
+const G={};
+function inferYear(yy){ const n=+yy, cur=new Date().getFullYear()%100; return (n<=cur?2000:1900)+n; }
+function dobISO(ddmmyy){ const p=ddmmyy.split('/'); if(p.length!=3) return ""; return `${inferYear(p[2])}-${p[1]}-${p[0]}`; }
+function onScanned(r){
+  G.scan=r;
+  $("i_nombre").value=r.given||""; $("i_ap1").value=r.surname||""; $("i_ap2").value="";
+  $("i_sexo").value=(r.sex==="F"?"F":r.sex==="M"?"M":"X");
+  $("i_dob").value=dobISO(r.dob);
+  const iso=ICAO2ISO[r.nat]||""; if(iso) $("i_nac").value=iso;
+  $("i_tdoc").value = r.fmt==="TD1" ? "DNI" : "PASAPORTE";
+  $("i_ndoc").value=r.docnum||"";
+  showScreen("screen-confirm",2);
+}
+function goManual(){ stopScan(); showScreen("screen-confirm",2); }
+
+// tipo doc spagnolo -> mostra número de soporte
+function refreshSoporte(){
+  const sp = ["DNI","NIE"].includes($("i_tdoc").value);
+  $("wrap_soporte").style.display = sp?"block":"none";
+}
+// país -> prefisso tel + provincia (tendina ES / testo)
+function refreshCountryDeps(){
+  const iso=$("i_pais").value; $("i_pref").value=DIAL[iso]||"";
+  const isES=iso==="ES";
+  $("i_prov").style.display=isES?"none":"block";
+  $("i_prov_sel").style.display=isES?"block":"none";
 }
 
-async function startScan(){
-  setStatus('Avvio camera…');
-  try{
-    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}});
-  }catch(e){ setStatus('Camera non disponibile: '+e.message+'  (se sei nell\'app Airbnb/Instagram, apri il link in Safari/Chrome)','warn'); return; }
-  video.srcObject=stream; await video.play();
-  setStatus('Scarico il modello MRZ (~11 MB, solo al primo avvio)…');
-  if(!worker){
-    // modello addestrato su OCR-B/MRZ (DoubangoTelecom), ospitato nel repo → langPath '.'
-    worker=await Tesseract.createWorker('mrz', 1, { langPath: '.' });
-    await worker.setParameters({ tessedit_char_whitelist:'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ<',
-                                 tessedit_pageseg_mode:'6' });
+function validateComplete(){
+  let ok=true;
+  const set=(id,eid,cond,key)=>{ const el=$(id),er=$(eid);
+    if(cond){ el.classList.add("bad"); er.textContent=tt(key); er.classList.add("show"); ok=false; }
+    else { el.classList.remove("bad"); er.classList.remove("show"); } };
+  set("i_calle","e_calle", !$("i_calle").value.trim(), "req_calle");
+  set("i_cp","e_cp", !/^[0-9A-Za-z \-]{3,10}$/.test($("i_cp").value.trim()), "req_cp");
+  set("i_ciudad","e_ciudad", !$("i_ciudad").value.trim(), "req_ciudad");
+  set("i_tel","e_tel", !/^[0-9 ]{6,15}$/.test($("i_tel").value.trim()), "req_tel");
+  set("i_email","e_email", !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test($("i_email").value.trim()), "req_email");
+  // país obbligatorio
+  if(!$("i_pais").value){ $("i_pais").classList.add("bad"); ok=false; } else $("i_pais").classList.remove("bad");
+  const r=$("i_rgpd"); if(!r.checked){ $("e_rgpd").textContent=tt("req_rgpd"); $("e_rgpd").classList.add("show"); ok=false; }
+  else $("e_rgpd").classList.remove("show");
+  return ok;
+}
+function collect(){
+  const isoN=$("i_nac").value, isoP=$("i_pais").value;
+  const cName=iso=>{ const c=COUNTRIES.find(x=>x[0]===iso); return c?(LANG=="es"?c[1]:c[2]):iso; };
+  const prov = isoP==="ES" ? $("i_prov_sel").value : $("i_prov").value.trim();
+  return {
+    nombre:$("i_nombre").value.trim(),
+    primer_apellido:$("i_ap1").value.trim(),
+    segundo_apellido:$("i_ap2").value.trim(),
+    apellidos:[$("i_ap1").value.trim(),$("i_ap2").value.trim()].filter(Boolean).join(" "),
+    sexo:$("i_sexo").value,
+    nacimiento:$("i_dob").value,
+    nacionalidad:cName(isoN), nacionalidad_iso:isoN,
+    tipo_documento:$("i_tdoc").value,
+    numero_documento:$("i_ndoc").value.trim(),
+    numero_soporte: ["DNI","NIE"].includes($("i_tdoc").value) ? $("i_soporte").value.trim() : "",
+    direccion:$("i_calle").value.trim(),
+    cp:$("i_cp").value.trim(),
+    ciudad:$("i_ciudad").value.trim(),
+    provincia:prov,
+    pais:cName(isoP), pais_iso:isoP,
+    telefono:($("i_pref").value+" "+$("i_tel").value.trim()).trim(),
+    email:$("i_email").value.trim(),
+    rgpd:$("i_rgpd").checked
+  };
+}
+function goReview(){
+  const g=collect(); G.data=g;
+  const rows=[["Nombre","nombre"],["Primer apellido","primer_apellido"],["Segundo apellido","segundo_apellido"],
+   ["Sexo","sexo"],["Fecha nac.","nacimiento"],["Nacionalidad","nacionalidad"],
+   ["Tipo doc.","tipo_documento"],["Nº documento","numero_documento"],["Nº soporte","numero_soporte"],
+   ["Dirección","direccion"],["CP","cp"],["Ciudad","ciudad"],["Provincia","provincia"],["País","pais"],
+   ["Teléfono","telefono"],["Email","email"]];
+  $("rv_body").innerHTML=rows.filter(r=>g[r[1]]).map(r=>
+    `<div class="row"><span class="k">${r[0]}</span><span class="v">${g[r[1]]}</span></div>`).join("");
+  showScreen("screen-review",4);
+}
+async function send(){
+  const payload=G.data;
+  $("dn_out").textContent=JSON.stringify(payload,null,2);
+  if(ENDPOINT){
+    try{ await fetch(ENDPOINT,{method:"POST",body:JSON.stringify(payload)}); }catch(e){}
   }
-  found=false; fieldsEl.classList.remove('show');
-  setStatus('Scanner attivo. Inquadra la zona MRZ.');
-  startBtn.disabled=true; stopBtn.disabled=false;
-  loop=setInterval(scanOnce,1200);
+  showScreen("screen-done",4);
 }
-function stopScan(){
-  clearInterval(loop); loop=null;
-  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
-  startBtn.disabled=false; stopBtn.disabled=true;
-}
-startBtn.onclick=startScan; stopBtn.onclick=()=>{ stopScan(); setStatus('Scanner fermato.'); };
+
+/* ============ wiring ============ */
+$("lang-es").onclick=()=>{LANG="es";$("lang-es").classList.add("on");$("lang-en").classList.remove("on");applyLang();};
+$("lang-en").onclick=()=>{LANG="en";$("lang-en").classList.add("on");$("lang-es").classList.remove("on");applyLang();};
+$("startBtn").onclick=startScan;
+$("manualBtn").onclick=goManual;
+$("cf_back").onclick=()=>showScreen("screen-scan",1);
+$("cf_next").onclick=()=>{ refreshSoporte(); refreshCountryDeps(); showScreen("screen-complete",3); };
+$("i_tdoc").onchange=refreshSoporte;
+$("i_pais").onchange=refreshCountryDeps;
+$("cp_back").onclick=()=>showScreen("screen-confirm",2);
+$("cp_next").onclick=()=>{ if(validateComplete()) goReview(); };
+$("rv_back").onclick=()=>showScreen("screen-complete",3);
+$("rv_send").onclick=send;
+applyLang(); refreshSoporte();
 </script>
 </body>
 </html>
