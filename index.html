@@ -274,7 +274,7 @@ const T={
   dn_h:"¡Registro completado!",dn_sub:"Gracias. Tus datos han sido registrados.",dn_json:"Datos recogidos (JSON)",
   req_calle:"Introduce la dirección",req_cp:"Código postal no válido",req_ciudad:"Introduce la ciudad",
   req_tel:"Teléfono no válido",req_email:"Email no válido",req_rgpd:"Debes aceptar para continuar",
-  sel:"Selecciona…",lockhint:"🔒 Documento, fecha y soporte verificados (bloqueados). ✏️ Nombre y apellidos: revísalos y corrige si hace falta."},
+  sel:"Selecciona…",lockhint:"🔒 Datos leídos y verificados del documento (3 lecturas coincidentes). Si algo no coincide, vuelve atrás y escanea de nuevo."},
  en:{priv:"Scanning happens only on your phone. No image is sent or stored.",
   scan_h:"Scan your document",scan_sub:"Point at the 2-3 lines with «<<<» at the bottom of your passport or ID.",
   guide:"Frame ONLY the code (the 2-3 lines with «<<<» at the bottom of the passport/ID)",start:"Start scanner",manual:"Fill in manually",
@@ -291,7 +291,7 @@ const T={
   dn_h:"Registration complete!",dn_sub:"Thank you. Your details have been registered.",dn_json:"Collected data (JSON)",
   req_calle:"Enter the address",req_cp:"Invalid postal code",req_ciudad:"Enter the city",
   req_tel:"Invalid phone",req_email:"Invalid email",req_rgpd:"You must accept to continue",
-  sel:"Select…",lockhint:"🔒 Document, date and support number verified (locked). ✏️ Name and surnames: please review and correct if needed."}
+  sel:"Select…",lockhint:"🔒 Data read and verified from your document (3 matching reads). If something is wrong, go back and scan again."}
 };
 let LANG="es";
 function tt(k){ return T[LANG][k]; }
@@ -338,7 +338,7 @@ function showScreen(id,stepNum){
 
 /* ============ MRZ scanner (come prototipo) ============ */
 const video=$("video"), work=$("work"), statusEl=$("status"), dbg=$("dbg");
-let worker=null, stream=null, busy=false, loop=null, found=false;
+let worker=null, stream=null, busy=false, loop=null, found=false, votes={}; const CONFIRM=3;
 function setStatus(t,cls){ statusEl.textContent=t; statusEl.className=cls||""; }
 function val(c){ if(c>='0'&&c<='9')return c.charCodeAt(0)-48; if(c>='A'&&c<='Z')return c.charCodeAt(0)-55; return 0; }
 function cd(s){ const w=[7,3,1]; let x=0; for(let i=0;i<s.length;i++) x+=val(s[i])*w[i%3]; return x%10; }
@@ -389,8 +389,18 @@ async function scanOnce(){ if(busy||found) return; busy=true;
   const thr=(sum/(d.length/4))*0.92;
   for(let i=0;i<d.length;i+=4){const v=d[i]<thr?0:255; d[i]=d[i+1]=d[i+2]=v;} ctx.putImageData(im,0,0);
   try{ const {data:{text}}=await worker.recognize(work); const r=tryParse(text);
-    if(r){ dbg.textContent=text; if(Object.values(r.checks).every(Boolean)){ found=true; stopScan(); onScanned(r); } }
-    else { setStatus(LANG=="es"?"Buscando la zona MRZ…":"Looking for the MRZ zone…"); dbg.textContent=text; }
+    if(r && Object.values(r.checks).every(Boolean)){
+      dbg.textContent=text;
+      // consenso multi-frame: i nomi non hanno check-digit -> accetto solo se la
+      // stessa lettura (nomi inclusi) si ripete CONFIRM volte. Scarta errori casuali.
+      const sig=JSON.stringify([r.fmt,r.given,r.surname,r.docnum,r.dob,r.sex,r.nat,
+                                r.es?[r.es.ap1,r.es.ap2,r.es.nif,r.es.soporte]:0]);
+      votes[sig]=(votes[sig]||0)+1;
+      const n=votes[sig];
+      if(n>=CONFIRM){ found=true; stopScan(); onScanned(r); }
+      else setStatus(LANG=="es"?`Verificando lectura… (${n}/${CONFIRM}) mantén firme`
+                                :`Verifying read… (${n}/${CONFIRM}) hold steady`);
+    } else { setStatus(LANG=="es"?"Buscando el código…":"Looking for the code…"); dbg.textContent=text; }
   }catch(e){ setStatus("OCR: "+e.message,"warn"); } busy=false; }
 async function startScan(){ setStatus(LANG=="es"?"Iniciando cámara…":"Starting camera…");
   try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}}); }
@@ -399,7 +409,7 @@ async function startScan(){ setStatus(LANG=="es"?"Iniciando cámara…":"Startin
   setStatus(LANG=="es"?"Cargando modelo MRZ (~11 MB, solo la 1ª vez)…":"Loading MRZ model (~11 MB, first time only)…");
   if(!worker){ worker=await Tesseract.createWorker('mrz',1,{langPath:'.',workerPath:'./vendor/worker.min.js',corePath:'./vendor'});
     await worker.setParameters({tessedit_char_whitelist:'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ<',tessedit_pageseg_mode:'6'}); }
-  found=false; setStatus(LANG=="es"?"Escáner activo. Encuadra el código.":"Scanner active. Frame the code.");
+  found=false; votes={}; setStatus(LANG=="es"?"Escáner activo. Encuadra el código.":"Scanner active. Frame the code.");
   $("scanline").style.display="block";
   loop=setInterval(scanOnce,1200); }
 function stopScan(){ clearInterval(loop); loop=null; const sl=$("scanline"); if(sl) sl.style.display="none";
@@ -428,10 +438,10 @@ function onScanned(r){
 function lockConfirm(r){
   // Nome e cognomi restano MODIFICABILI: l'MRZ non li protegge con check-digit
   // (possibili errori OCR, es. "LGARCIA"). Si bloccano solo i campi verificati.
-  ["i_ndoc"].forEach(id=>{ const e=$(id); e.readOnly=true; e.classList.add("locked"); });
+  // tutti i campi d'identità bloccati: la lettura e' confermata da CONFIRM frame identici.
+  // Se qualcosa non torna, si torna indietro e si riscansiona (niente modifica manuale).
+  ["i_nombre","i_ap1","i_ap2","i_ndoc"].forEach(id=>{ const e=$(id); e.readOnly=true; e.classList.add("locked"); });
   ["i_sexo","i_nac","i_dob"].forEach(id=>{ const e=$(id); e.disabled=true; e.classList.add("locked"); });
-  // nome/cognomi: assicura che siano sbloccati anche dopo un rescan precedente
-  ["i_nombre","i_ap1","i_ap2"].forEach(id=>{ const e=$(id); e.readOnly=false; e.classList.remove("locked"); });
   const es=!!(r&&r.es);
   const td=$("i_tdoc"); td.disabled=es; td.classList.toggle("locked",es);
   const sp=$("i_soporte"); sp.readOnly=es; sp.classList.toggle("locked",es);
