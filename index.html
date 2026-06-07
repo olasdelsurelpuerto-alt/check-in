@@ -186,7 +186,7 @@
 </main>
 
 <canvas id="work" hidden></canvas>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="./vendor/tesseract.min.js"></script>
 <script>
 /* ============ CONFIG ============ */
 // Endpoint per scrivere nel Google Sheet (Apps Script web-app). Vuoto = mostra solo il JSON.
@@ -376,7 +376,7 @@ async function startScan(){ setStatus(LANG=="es"?"Iniciando cámara…":"Startin
   catch(e){ setStatus((LANG=="es"?"Cámara no disponible. Abre el enlace en Safari/Chrome. ":"Camera unavailable. Open the link in Safari/Chrome. ")+e.message,"warn"); return; }
   video.srcObject=stream; await video.play();
   setStatus(LANG=="es"?"Cargando modelo MRZ (~11 MB, solo la 1ª vez)…":"Loading MRZ model (~11 MB, first time only)…");
-  if(!worker){ worker=await Tesseract.createWorker('mrz',1,{langPath:'.'});
+  if(!worker){ worker=await Tesseract.createWorker('mrz',1,{langPath:'.',workerPath:'./vendor/worker.min.js',corePath:'./vendor'});
     await worker.setParameters({tessedit_char_whitelist:'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ<',tessedit_pageseg_mode:'6'}); }
   found=false; setStatus(LANG=="es"?"Escáner activo. Encuadra la zona MRZ.":"Scanner active. Frame the MRZ zone.");
   loop=setInterval(scanOnce,1200); }
