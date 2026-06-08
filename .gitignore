@@ -18,3 +18,6 @@
 # QR del check-in (asset locale)
 /qr_checkin.png
 /qr_checkin.svg
+
+# Locandina generata (asset locale)
+/locandina_checkin.png
