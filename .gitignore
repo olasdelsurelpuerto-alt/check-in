@@ -14,3 +14,7 @@
 
 # screenshot/snapshot generati durante i test
 /.playwright-mcp/
+
+# QR del check-in (asset locale)
+/qr_checkin.png
+/qr_checkin.svg
