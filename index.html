@@ -43,11 +43,13 @@
   /* scanner */
   .scanlabel{ font-size:13px; color:var(--mut); text-align:center; margin:0 0 10px; }
   /* fessura-scanner: si inquadra SOLO il codice MRZ */
-  .slot{ position:relative; width:100%; aspect-ratio:3/1; background:#000; border-radius:14px;
+  .slot{ position:relative; width:100%; aspect-ratio:3/1; border-radius:14px;
+         background:radial-gradient(120% 140% at 50% 0%, #0e2c43 0%, #071a28 70%, #04101a 100%);
          overflow:hidden; box-shadow:0 6px 20px rgba(27,108,168,.25); }
   .slot video{ width:100%; height:100%; object-fit:cover; }
   .frame{ position:absolute; inset:0; pointer-events:none; }
-  .corner{ position:absolute; width:26px; height:26px; border:3px solid #fff; opacity:.95; }
+  .corner{ position:absolute; width:26px; height:26px; border:3px solid var(--ocean2); opacity:.95;
+           box-shadow:0 0 7px rgba(0,180,200,.45); }
   .corner.tl{ top:9px; left:9px; border-right:0; border-bottom:0; border-radius:7px 0 0 0; }
   .corner.tr{ top:9px; right:9px; border-left:0; border-bottom:0; border-radius:0 7px 0 0; }
   .corner.bl{ bottom:9px; left:9px; border-right:0; border-top:0; border-radius:0 0 0 7px; }
@@ -56,6 +58,15 @@
              background:linear-gradient(90deg,transparent,#ff6f5e,transparent);
              box-shadow:0 0 10px 1px #ff6f5e; animation:scan 2.1s ease-in-out infinite; }
   @keyframes scan{ 0%{top:16%} 50%{top:84%} 100%{top:16%} }
+  /* esempio MRZ (DNI TD1) mostrato a camera spenta, come guida visiva */
+  .mrz-ex{ position:absolute; left:0; right:0; top:50%; transform:translateY(-50%);
+           text-align:center; font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+           font-size:10px; line-height:1.7; letter-spacing:0.5px; white-space:pre;
+           color:rgba(120,225,240,.55); text-shadow:0 0 6px rgba(0,180,200,.35); pointer-events:none; }
+  .mrz-ex .nm{ color:rgba(180,240,250,.72); }
+  .frame::before{ content:""; position:absolute; left:8%; right:8%; top:50%; height:1px; transform:translateY(-1px);
+           background:linear-gradient(90deg,transparent,rgba(0,200,220,.45),transparent); }
+  .slot.scanning .mrz-ex, .slot.scanning .frame::before{ display:none; }
   /* barra di lettura a 3 fasi */
   .scanprog{ margin-top:16px; text-align:center; }
   .scanprog .bars{ display:flex; gap:9px; justify-content:center; }
@@ -180,6 +191,9 @@
       <div class="frame">
         <div class="corner tl"></div><div class="corner tr"></div>
         <div class="corner bl"></div><div class="corner br"></div>
+        <div class="mrz-ex" aria-hidden="true">IDESPBK1234567&lt;5&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;
+9001012M3501019ESP&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;8
+<span class="nm">OLASDELSUR&lt;&lt;AIRBNB&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;</span></div>
         <div class="scanline" id="scanline" style="display:none"></div>
       </div>
     </div>
@@ -556,6 +570,7 @@ async function startScan(){ setStatus("");
   try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}}); }
   catch(e){ scanprog.hidden=true; setStatus((LANG=="es"?"Cámara no disponible. Abre el enlace en Safari/Chrome. ":"Camera unavailable. Open the link in Safari/Chrome. ")+e.message,"warn"); return; }
   video.srcObject=stream; await video.play();
+  document.querySelector('.slot').classList.add('scanning');
   if(!worker){ worker=await Tesseract.createWorker('mrz',1,{langPath:'.',workerPath:'./vendor/worker.min.js',corePath:'./vendor'});
     await worker.setParameters({tessedit_char_whitelist:'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ<',tessedit_pageseg_mode:'6'}); }
   found=false; votes={};
@@ -563,6 +578,7 @@ async function startScan(){ setStatus("");
   $("scanline").style.display="block";
   loop=setInterval(scanOnce,1200); }
 function stopScan(keepProg){ clearInterval(loop); loop=null; const sl=$("scanline"); if(sl) sl.style.display="none";
+  const slot=document.querySelector('.slot'); if(slot) slot.classList.remove('scanning');
   if(scanprog && !keepProg) scanprog.hidden=true;
   if(stream){stream.getTracks().forEach(t=>t.stop()); stream=null;} }
 
