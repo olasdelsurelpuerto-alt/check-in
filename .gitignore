@@ -21,3 +21,8 @@
 
 # Locandina generata (asset locale)
 /locandina_checkin.png
+
+# Locandine con QR WiFi (password) — MAI nel repo pubblico
+/locandina_3qr_checkin.png
+/locandina_3qr_checkin.pdf
+/OlasDelSur_locandina_ospiti*.pdf
