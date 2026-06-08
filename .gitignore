@@ -1,0 +1,16 @@
+# --- Artefatti e asset SOLO-LOCALI (mai nel repo pubblico) ---
+
+# mockup e riferimenti di design interni
+/design/
+
+# proxy server-side (Google Apps Script), non parte del sito statico
+/apps_script.gs
+
+# QR del solo URL pubblico, tenuto in locale
+/qr.png
+
+# collegamenti alle note del Second Brain (privato)
+/PROJECT_NOTES.md
+
+# screenshot/snapshot generati durante i test
+/.playwright-mcp/
