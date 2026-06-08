@@ -5,8 +5,8 @@ telefono, scansiona il codice **MRZ** del passaporto o del documento d'identità
 vengono letti **interamente nel browser** e, completati con indirizzo e contatti, inviati al modulo
 di registrazione (fase di raccolta dati per il registro viajeros SES — RD 933/2021).
 
-- **App live:** https://olasdelsurelpuerto-alt.github.io/mrz-scanner-proto/
-- **Repo:** `olasdelsurelpuerto-alt/mrz-scanner-proto` (GitHub Pages)
+- **App live:** https://olasdelsurelpuerto-alt.github.io/check-in/
+- **Repo:** `olasdelsurelpuerto-alt/check-in` (GitHub Pages)
 
 ## 🔒 Privacy & sicurezza
 - **OCR on-device** (Tesseract.js / WebAssembly): l'immagine del documento **non viene mai caricata
