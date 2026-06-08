@@ -59,8 +59,10 @@
     <use href="#shell" transform="translate(60,372) rotate(42)"/>
     <use href="#van" transform="translate(250,372) rotate(-6)"/>
     <use href="#star" transform="translate(360,388) rotate(18)"/>
-    <use href="#compass" transform="translate(106,86) rotate(8)"/>
-    <use href="#compass" transform="translate(318,250) rotate(-12)"/>
-    <use href="#compass" transform="translate(300,358) rotate(15)"/>
+    <use href="#compass" transform="translate(16,96) rotate(8)"/>
+    <use href="#compass" transform="translate(372,40) rotate(-10)"/>
+    <use href="#compass" transform="translate(8,300) rotate(14)"/>
+    <use href="#compass" transform="translate(384,176) rotate(-6)"/>
+    <use href="#compass" transform="translate(300,360) rotate(15)"/>
   </g>
 </svg>
