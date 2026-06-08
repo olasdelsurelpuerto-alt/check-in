@@ -42,6 +42,9 @@
   .sub{ color:#6f5436; font-size:13.5px; margin:0 0 13px; line-height:1.4; }
   /* scanner */
   .scanlabel{ font-size:13px; color:var(--mut); text-align:center; margin:0 0 10px; }
+  /* testi dello scan piu' in evidenza */
+  #t_scan_sub{ color:var(--ink); font-weight:500; }
+  #t_scanlabel{ color:var(--ink); font-weight:600; }
   /* fessura-scanner: si inquadra SOLO il codice MRZ */
   .slot{ position:relative; width:100%; aspect-ratio:3/1; border-radius:14px;
          background:radial-gradient(120% 140% at 50% 0%, #0e2c43 0%, #071a28 70%, #04101a 100%);
@@ -80,7 +83,7 @@
   .scanprog .phrase{ margin-top:10px; font-size:13.5px; color:var(--ocean); font-weight:600; }
   .scanprog .phrase::before{ content:"📖 "; }
   footer.legal{ max-width:520px; margin:18px auto 0; padding:16px 18px 26px; text-align:center;
-        font-size:12px; line-height:1.55; color:var(--mut); border-top:1px solid var(--line); }
+        font-size:12.5px; line-height:1.55; color:#5d4630; font-weight:500; border-top:1px solid var(--line); }
   footer.legal::before{ content:"⚖️ "; }
   /* MOBILE: ingrandisce e fa riempire ~3/4 dello schermo */
   @media (max-width:600px){
