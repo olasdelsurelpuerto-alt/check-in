@@ -46,34 +46,37 @@
       <circle cx="9" cy="21" r="2.6"/><circle cx="22" cy="21" r="2.6"/>
     </g>
   </defs>
+  <!-- distribuzione a griglia jitterata: copertura uniforme su tutto il tile -->
   <g fill="none" stroke="#a06a2e" stroke-opacity="0.16" stroke-width="1.3">
-    <use href="#star" transform="translate(34,46) rotate(-16)"/>
-    <use href="#shell" transform="translate(168,24) rotate(14)"/>
-    <use href="#van" transform="translate(286,60) rotate(-7)"/>
-    <use href="#palm" transform="translate(250,116) rotate(-14)"/>
-    <use href="#palm" transform="translate(96,150) rotate(9)"/>
-    <use href="#shell" transform="translate(232,168) rotate(-20)"/>
-    <use href="#star" transform="translate(344,206) rotate(24)"/>
-    <use href="#van" transform="translate(150,206) rotate(8)"/>
-    <use href="#van" transform="translate(40,250) rotate(11)"/>
-    <use href="#shell" transform="translate(360,118) rotate(-8)"/>
-    <use href="#star" transform="translate(252,250) rotate(12)"/>
-    <use href="#palm" transform="translate(196,300) rotate(-12)"/>
-    <use href="#shell" transform="translate(330,330) rotate(30)"/>
-    <use href="#star" transform="translate(120,330) rotate(-26)"/>
-    <use href="#palm" transform="translate(360,288) rotate(14)"/>
-    <use href="#shell" transform="translate(60,372) rotate(42)"/>
-    <use href="#van" transform="translate(250,372) rotate(-6)"/>
-    <use href="#star" transform="translate(360,388) rotate(18)"/>
-    <use href="#compass" transform="translate(16,96) rotate(8)"/>
-    <use href="#compass" transform="translate(372,40) rotate(-10)"/>
-    <use href="#compass" transform="translate(8,300) rotate(14)"/>
-    <use href="#compass" transform="translate(384,176) rotate(-6)"/>
-    <use href="#compass" transform="translate(300,360) rotate(15)"/>
-    <use href="#wave" transform="translate(128,250) rotate(-4)"/>
-    <use href="#wave" transform="translate(322,182) rotate(3)"/>
-    <use href="#wave" transform="translate(60,300) rotate(-5)"/>
-    <use href="#wave" transform="translate(226,332) rotate(4)"/>
-    <use href="#wave" transform="translate(190,74) rotate(-3)"/>
+    <!-- riga 1 -->
+    <use href="#star"    transform="translate(24,18) rotate(-16)"/>
+    <use href="#wave"    transform="translate(110,26) rotate(-4)"/>
+    <use href="#shell"   transform="translate(186,14) rotate(14)"/>
+    <use href="#van"     transform="translate(286,24) rotate(-7)"/>
+    <use href="#compass" transform="translate(368,28) rotate(-10)"/>
+    <!-- riga 2 -->
+    <use href="#palm"    transform="translate(14,96) rotate(9)"/>
+    <use href="#compass" transform="translate(100,110) rotate(8)"/>
+    <use href="#palm"    transform="translate(196,92) rotate(-14)"/>
+    <use href="#shell"   transform="translate(270,104) rotate(-20)"/>
+    <use href="#star"    transform="translate(352,90) rotate(24)"/>
+    <!-- riga 3 -->
+    <use href="#wave"    transform="translate(20,176) rotate(-5)"/>
+    <use href="#van"     transform="translate(96,188) rotate(8)"/>
+    <use href="#star"    transform="translate(180,170) rotate(12)"/>
+    <use href="#wave"    transform="translate(300,182) rotate(3)"/>
+    <use href="#shell"   transform="translate(384,176) rotate(-8)"/>
+    <!-- riga 4 -->
+    <use href="#shell"   transform="translate(30,250) rotate(42)"/>
+    <use href="#palm"    transform="translate(110,244) rotate(-12)"/>
+    <use href="#compass" transform="translate(200,260) rotate(-6)"/>
+    <use href="#van"     transform="translate(286,250) rotate(11)"/>
+    <use href="#wave"    transform="translate(360,244) rotate(4)"/>
+    <!-- riga 5 -->
+    <use href="#compass" transform="translate(16,330) rotate(14)"/>
+    <use href="#star"    transform="translate(110,330) rotate(-26)"/>
+    <use href="#shell"   transform="translate(200,318) rotate(30)"/>
+    <use href="#wave"    transform="translate(290,332) rotate(4)"/>
+    <use href="#palm"    transform="translate(360,322) rotate(6)"/>
   </g>
 </svg>
