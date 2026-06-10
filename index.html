@@ -291,6 +291,7 @@
       <button class="ghost" id="rv_back"></button>
       <button class="act" id="rv_send"></button>
     </div>
+    <div class="err" id="e_send" style="font-size:14px;margin-top:12px;line-height:1.45"></div>
   </section>
 
   <!-- DONE -->
@@ -306,6 +307,10 @@
 /* ============ CONFIG ============ */
 // Opzione A: invio al Google Form esistente -> la riga finisce nello STESSO Google Sheet.
 const FORM_ACTION="https://docs.google.com/forms/d/e/1FAIpQLSeV6HKG4HQRV3GiPvacJTknBhUGN2HtBKRDlaKh-5O6qB4cuQ/formResponse";
+// Proxy Apps Script (apps_script.gs deployato come Web App, URL /exec): risponde {ok:true|false}
+// e da' conferma REALE di consegna. Vuoto = invio diretto al Form (legacy, risposta opaca no-cors:
+// si rileva solo il fallimento di rete, non il rifiuto della riga).
+const PROXY_ACTION="";
 
 /* ============ DATI ============ */
 // paese: [ISO2, ES, EN]  (lista pratica; aggiungibile)
@@ -375,7 +380,9 @@ const T={
   dn_h:"¡Registro completado!",dn_sub:"¡Gracias! Disfruta de tu estancia en Olas del Sur. 🌊",dn_json:"Datos recogidos (JSON)",
   req_calle:"Introduce la dirección",req_cp:"Código postal no válido",req_ciudad:"Introduce la ciudad",
   req_tel:"Teléfono no válido",req_email:"Email no válido",req_rgpd:"Debes aceptar para continuar",
-  sel:"Selecciona…",lockhint:"🔒 Datos leídos y verificados del documento (3 lecturas coincidentes). Si algo no coincide, vuelve atrás y escanea de nuevo."},
+  sel:"Selecciona…",lockhint:"🔒 Datos leídos y verificados del documento (3 lecturas coincidentes). Si algo no coincide, vuelve atrás y escanea de nuevo.",
+  doc_expired:"⚠️ El documento está caducado. Escanea un documento en vigor.",
+  sending:"Enviando…",send_err:"No se pudo enviar el registro. Comprueba tu conexión e inténtalo de nuevo. Si sigue fallando, muestra esta pantalla al anfitrión."},
  en:{priv:"Scanning happens only on your phone. No image is sent or stored.",
   legal:"Traveler registration is required by law (Organic Law 4/2015 and Royal Decree 933/2021). Your data is shared only with the competent authorities (Ministry of the Interior).",
   scan_h:"Scan your document's code",scan_sub:"The code is the 2-3 lines with «<<<» at the bottom of your passport, national ID or European ID card.",
@@ -393,7 +400,9 @@ const T={
   dn_h:"Registration complete!",dn_sub:"Thank you! Enjoy your stay at Olas del Sur. 🌊",dn_json:"Collected data (JSON)",
   req_calle:"Enter the address",req_cp:"Invalid postal code",req_ciudad:"Enter the city",
   req_tel:"Invalid phone",req_email:"Invalid email",req_rgpd:"You must accept to continue",
-  sel:"Select…",lockhint:"🔒 Data read and verified from your document (3 matching reads). If something is wrong, go back and scan again."},
+  sel:"Select…",lockhint:"🔒 Data read and verified from your document (3 matching reads). If something is wrong, go back and scan again.",
+  doc_expired:"⚠️ The document has expired. Please scan a valid document.",
+  sending:"Sending…",send_err:"The registration could not be sent. Check your connection and try again. If it keeps failing, show this screen to your host."},
  fr:{priv:"La vérification a lieu uniquement sur votre téléphone. Aucune image n'est envoyée ni conservée.",
   legal:"L'enregistrement des voyageurs est obligatoire par la loi (Loi organique 4/2015 et Décret royal 933/2021). Vos données sont communiquées uniquement aux autorités compétentes (ministère de l'Intérieur).",
   scan_h:"Scannez le code de votre document",scan_sub:"Le code, ce sont les 2-3 lignes avec « <<< » en bas de votre passeport, carte nationale d'identité ou carte d'identité européenne.",
@@ -411,7 +420,9 @@ const T={
   dn_h:"Enregistrement terminé !",dn_sub:"Merci ! Profitez de votre séjour à Olas del Sur. 🌊",dn_json:"Données (JSON)",
   req_calle:"Saisissez l'adresse",req_cp:"Code postal invalide",req_ciudad:"Saisissez la ville",
   req_tel:"Téléphone invalide",req_email:"E-mail invalide",req_rgpd:"Vous devez accepter pour continuer",
-  sel:"Sélectionner…",lockhint:"🔒 Données lues et vérifiées depuis le document (3 lectures identiques). Si quelque chose ne va pas, revenez en arrière et scannez à nouveau."},
+  sel:"Sélectionner…",lockhint:"🔒 Données lues et vérifiées depuis le document (3 lectures identiques). Si quelque chose ne va pas, revenez en arrière et scannez à nouveau.",
+  doc_expired:"⚠️ Le document est expiré. Scannez un document en cours de validité.",
+  sending:"Envoi…",send_err:"L'enregistrement n'a pas pu être envoyé. Vérifiez votre connexion et réessayez. Si le problème persiste, montrez cet écran à votre hôte."},
  de:{priv:"Die Prüfung erfolgt nur auf Ihrem Telefon. Es wird kein Bild gesendet oder gespeichert.",
   legal:"Die Reisendenregistrierung ist gesetzlich vorgeschrieben (Organgesetz 4/2015 und Königliches Dekret 933/2021). Ihre Daten werden ausschließlich an die zuständigen Behörden (Innenministerium) übermittelt.",
   scan_h:"Scannen Sie den Code Ihres Dokuments",scan_sub:"Der Code sind die 2-3 Zeilen mit «<<<» unten auf Ihrem Reisepass, Personalausweis oder europäischen Ausweis.",
@@ -429,7 +440,9 @@ const T={
   dn_h:"Registrierung abgeschlossen!",dn_sub:"Danke! Genießen Sie Ihren Aufenthalt im Olas del Sur. 🌊",dn_json:"Daten (JSON)",
   req_calle:"Adresse eingeben",req_cp:"Ungültige Postleitzahl",req_ciudad:"Stadt eingeben",
   req_tel:"Ungültige Telefonnummer",req_email:"Ungültige E-Mail",req_rgpd:"Sie müssen zustimmen, um fortzufahren",
-  sel:"Auswählen…",lockhint:"🔒 Daten aus dem Dokument gelesen und überprüft (3 übereinstimmende Lesungen). Falls etwas nicht stimmt, gehen Sie zurück und scannen Sie erneut."},
+  sel:"Auswählen…",lockhint:"🔒 Daten aus dem Dokument gelesen und überprüft (3 übereinstimmende Lesungen). Falls etwas nicht stimmt, gehen Sie zurück und scannen Sie erneut.",
+  doc_expired:"⚠️ Das Dokument ist abgelaufen. Bitte scannen Sie ein gültiges Dokument.",
+  sending:"Wird gesendet…",send_err:"Die Registrierung konnte nicht gesendet werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut. Wenn es weiterhin fehlschlägt, zeigen Sie diesen Bildschirm Ihrem Gastgeber."},
  it:{priv:"La verifica avviene solo sul tuo telefono. Nessuna immagine viene inviata o salvata.",
   legal:"La registrazione dei viaggiatori è obbligatoria per legge (Ley Orgánica 4/2015 e Real Decreto 933/2021). I tuoi dati sono comunicati esclusivamente alle autorità competenti (Ministero dell'Interno).",
   scan_h:"Scansiona il codice del tuo documento",scan_sub:"Il codice sono le 2-3 righe con «<<<» in fondo al tuo passaporto, carta d'identità nazionale o carta d'identità europea.",
@@ -447,7 +460,9 @@ const T={
   dn_h:"Registrazione completata!",dn_sub:"Grazie! Goditi il tuo soggiorno a Olas del Sur. 🌊",dn_json:"Dati (JSON)",
   req_calle:"Inserisci l'indirizzo",req_cp:"Codice postale non valido",req_ciudad:"Inserisci la città",
   req_tel:"Telefono non valido",req_email:"Email non valida",req_rgpd:"Devi accettare per continuare",
-  sel:"Seleziona…",lockhint:"🔒 Dati letti e verificati dal documento (3 letture coincidenti). Se qualcosa non torna, torna indietro e scansiona di nuovo."}
+  sel:"Seleziona…",lockhint:"🔒 Dati letti e verificati dal documento (3 letture coincidenti). Se qualcosa non torna, torna indietro e scansiona di nuovo.",
+  doc_expired:"⚠️ Il documento è scaduto. Scansiona un documento in corso di validità.",
+  sending:"Invio…",send_err:"Invio non riuscito. Controlla la connessione e riprova. Se continua a fallire, mostra questa schermata all'host."}
 };
 let LANG="es";
 function tt(k){ return T[LANG][k]; }
@@ -507,17 +522,20 @@ function val(c){ if(c>='0'&&c<='9')return c.charCodeAt(0)-48; if(c>='A'&&c<='Z')
 function cd(s){ const w=[7,3,1]; let x=0; for(let i=0;i<s.length;i++) x+=val(s[i])*w[i%3]; return x%10; }
 function ck(s,d){ return String(cd(s))===d; }
 function ymd(s){ return s.length===6? `${s.slice(4)}/${s.slice(2,4)}/${s.slice(0,2)}`:s; }
+// scadenza DD/MM/YY -> ISO (secolo sempre 20xx: nessun documento in corso scade nel 19xx)
+function expISO(ddmmyy){ const p=ddmmyy.split('/'); return p.length===3? `20${p[2]}-${p[1]}-${p[0]}`:""; }
+function todayISO(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function names(f){ const p=f.split('<<'); return {surname:(p[0]||'').replace(/</g,' ').trim(), given:(p[1]||'').replace(/</g,' ').trim()}; }
 function parseTD3(l1,l2){ const dn=l2.slice(0,9),cdn=l2[9],nat=l2.slice(10,13),dob=l2.slice(13,19),cdob=l2[19],
   sex=l2[20],exp=l2.slice(21,27),cexp=l2[27],comp=l2[43];
   const cs=l2.slice(0,10)+l2.slice(13,20)+l2.slice(21,28)+l2.slice(28,43);
   const checks={doc:ck(dn,cdn),dob:ck(dob,cdob),exp:ck(exp,cexp),comp:ck(cs,comp)};
-  return {fmt:"TD3",...names(l1.slice(5)),docnum:dn.replace(/</g,''),nat,dob:ymd(dob),sex:sex.replace(/</g,''),checks}; }
+  return {fmt:"TD3",...names(l1.slice(5)),docnum:dn.replace(/</g,''),nat,dob:ymd(dob),exp:ymd(exp),sex:sex.replace(/</g,''),checks}; }
 function parseTD1(l1,l2,l3){ const dn=l1.slice(5,14),cdn=l1[14],dob=l2.slice(0,6),cdob=l2[6],sex=l2[7],
   exp=l2.slice(8,14),cexp=l2[14],nat=l2.slice(15,18),comp=l2[29],issuer=l1.slice(2,5);
   const cs=l1.slice(5,30)+l2.slice(0,7)+l2.slice(8,15)+l2.slice(18,29);
   const checks={doc:ck(dn,cdn),dob:ck(dob,cdob),exp:ck(exp,cexp),comp:ck(cs,comp)};
-  const r={fmt:"TD1",issuer,...names(l3),docnum:dn.replace(/</g,''),nat,dob:ymd(dob),sex:sex.replace(/</g,''),checks};
+  const r={fmt:"TD1",issuer,...names(l3),docnum:dn.replace(/</g,''),nat,dob:ymd(dob),exp:ymd(exp),sex:sex.replace(/</g,''),checks};
   // Parser specifico DNI/NIE spagnolo: soporte e NIF sono in campi diversi rispetto allo standard
   if(issuer==="ESP"){
     const soporte=l1.slice(5,14).replace(/</g,'');          // "document number" MRZ = nº de soporte
@@ -553,6 +571,10 @@ async function scanOnce(){ if(busy||found) return; busy=true;
   for(let i=0;i<d.length;i+=4){const v=d[i]<thr?0:255; d[i]=d[i+1]=d[i+2]=v;} ctx.putImageData(im,0,0);
   try{ const {data:{text}}=await worker.recognize(work); const r=tryParse(text);
     if(r && Object.values(r.checks).every(Boolean)){
+      // documento scaduto: check digit ok ma data di scadenza passata -> rifiuta subito
+      if(r.exp && expISO(r.exp) < todayISO()){
+        found=true; stopScan(); scanprog.hidden=true; setStatus(tt("doc_expired"),"warn"); busy=false; return;
+      }
       dbg.textContent=text;
       // consenso multi-frame: i nomi non hanno check-digit -> accetto solo se la
       // stessa lettura (nomi inclusi) si ripete CONFIRM volte. Scarta errori casuali.
@@ -603,13 +625,14 @@ function onScanned(r){
   lockConfirm(r);
   showScreen("screen-confirm",2);
 }
-// blocca i campi estratti dall'MRZ (verificati coi check digit): non modificabili né cancellabili.
+// blocca TUTTI i campi d'identità estratti dall'MRZ: non modificabili né cancellabili.
+// SCELTA DELIBERATA (2026-06-10): anche nome e cognomi, pur senza check digit nello
+// standard ICAO, restano bloccati — il consenso CONFIRM-frame li verifica, l'errore OCR
+// e' raro (al 2° tentativo legge bene) e i dati passano comunque dalla revisione
+// dell'host prima del SES. Il blocco impedisce di dichiarare un'identita' diversa
+// da quella del documento. Se qualcosa non torna: indietro e riscansione.
 // Per il DNI/NIE spagnolo si estraggono e bloccano anche 2° cognome, tipo doc, n° soporte.
 function lockConfirm(r){
-  // Nome e cognomi restano MODIFICABILI: l'MRZ non li protegge con check-digit
-  // (possibili errori OCR, es. "LGARCIA"). Si bloccano solo i campi verificati.
-  // tutti i campi d'identità bloccati: la lettura e' confermata da CONFIRM frame identici.
-  // Se qualcosa non torna, si torna indietro e si riscansiona (niente modifica manuale).
   ["i_nombre","i_ap1","i_ap2","i_ndoc"].forEach(id=>{ const e=$(id); e.readOnly=true; e.classList.add("locked"); });
   ["i_sexo","i_nac","i_dob"].forEach(id=>{ const e=$(id); e.disabled=true; e.classList.add("locked"); });
   const es=!!(r&&r.es);
@@ -716,19 +739,36 @@ function buildFormData(g){
   p.append("entry.506836919", g.pais);
   if(g.provincia) p.append("entry.977950693", g.provincia);
   p.append("entry.103869547", g.telefono);
-  if(g.email) p.append("entry.1475220694", g.email);
+  p.append("entry.1475220694", g.email); // obbligatoria in validateComplete -> sempre presente
   if(g.rgpd) p.append("entry.1921329789", "Acepto / I accept");
   return p;
 }
 async function send(){
-  const g=G.data;
-  $("rv_send").disabled=true;
-  try{
-    await fetch(FORM_ACTION,{method:"POST",mode:"no-cors",
-      headers:{"Content-Type":"application/x-www-form-urlencoded"},
-      body:buildFormData(g).toString()});
-  }catch(e){ /* risposta opaca (no-cors): l'invio al Form avviene comunque */ }
-  showScreen("screen-done",4);
+  const g=G.data, btn=$("rv_send"), err=$("e_send");
+  btn.disabled=true; err.classList.remove("show");
+  const prev=btn.textContent; btn.textContent=tt("sending");
+  let ok=false;
+  if(PROXY_ACTION){
+    // via proxy: risposta leggibile {ok:true} = riga davvero salvata. 3 tentativi con backoff.
+    // body senza Content-Type custom -> "simple request", niente preflight CORS (Apps Script non gestisce OPTIONS)
+    const body=JSON.stringify(Object.fromEntries(buildFormData(g)));
+    for(let i=0;i<3&&!ok;i++){
+      if(i) await new Promise(r=>setTimeout(r,1500*i));
+      try{ const res=await fetch(PROXY_ACTION,{method:"POST",body});
+        ok=(await res.json()).ok===true; }catch(e){}
+    }
+  }else{
+    // legacy diretto al Form: la risposta e' opaca (no-cors) -> si assume ok se la rete non fallisce
+    try{ await fetch(FORM_ACTION,{method:"POST",mode:"no-cors",
+        headers:{"Content-Type":"application/x-www-form-urlencoded"},
+        body:buildFormData(g).toString()}); ok=true; }catch(e){}
+  }
+  btn.textContent=prev;
+  if(ok) showScreen("screen-done",4);
+  else{ // fallback visibile: l'ospite riprova o mostra questa schermata (con tutti i dati) all'host
+    btn.disabled=false; err.textContent=tt("send_err"); err.classList.add("show");
+    err.scrollIntoView({behavior:"smooth",block:"center"});
+  }
 }
 
 /* ============ wiring ============ */
