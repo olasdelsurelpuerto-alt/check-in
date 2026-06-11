@@ -42,4 +42,15 @@ Apri questa pagina sul <b>PC</b> e inquadra una delle immagini col telefono nell
   <figcaption>6) 🇩🇪 Personalausweis DEU (TD1) — atteso: MUSTERMANN / ERIKA · D · doc T22000129</figcaption>
   <img src="./sample_deucard.png" alt="MRZ carta d'identità tedesca di test">
 </figure>
+
+<h1>🛂 Caso difficile — passaporto USA (sfondo tinteggiato + riflesso)</h1>
+<div class="note">SPECIMEN inventato (TD3, check-digit validi) che riproduce il documento problematico:
+banda MRZ su <b>fondo blu con trama di sicurezza</b> e un <b>riflesso</b> lucido (tipico del
+passaporto USA in policarbonato). Con la vecchia <i>soglia globale</i> la banda diventava un
+blocco nero e non si leggeva; con la <b>binarizzazione adattiva (Sauvola)</b> si legge.
+Serve da regressione per quel fix.</div>
+<figure>
+  <figcaption>7) 🇺🇸 Passaporto USA «difficile» (TD3) — atteso: TRAVELER / JOHN MICHAEL · USA · doc 540001234 · nac. 01/01/1985 · scad. 01/01/2031</figcaption>
+  <img src="./sample_uspass_hard.png" alt="MRZ passaporto USA su sfondo tinteggiato con riflesso">
+</figure>
 </body></html>

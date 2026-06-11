@@ -554,6 +554,50 @@ function tryParse(t){ const L=mrzLines(t); const l44=L.filter(s=>s.length>=42);
   if(l44.length>=2) return parseTD3(l44[0].padEnd(44,'<').slice(0,44),l44[1].padEnd(44,'<').slice(0,44));
   const l30=L.filter(s=>s.length>=28&&s.length<=32);
   if(l30.length>=3) return parseTD1(...l30.slice(0,3).map(s=>s.padEnd(30,'<').slice(0,30))); return null; }
+/* Binarizzazione ADATTIVA (Sauvola, via integral image).
+   Perché: la vecchia soglia GLOBALE (mean*0.92) regge solo MRZ su fondo chiaro e
+   uniforme (es. passaporto peruviano). Su pagine in policarbonato lucido con sfondo
+   tinteggiato e riflessi (es. passaporto USA) la media globale schizza e l'intera
+   banda MRZ diventa un blocco nero -> Tesseract legge spazzatura e non si arriva mai
+   a 2 righe valide ("non legge nemmeno alla prima"). Sauvola usa media+varianza
+   LOCALI: T(x,y)=m*(1+k*(s/R-1)), così segue l'illuminazione locale e ignora il
+   glare. Integral image -> O(W*H), gira dentro i 1.2s del loop. Buffer riusati tra
+   frame (no GC churn); row0/col0 azzerate ad ogni chiamata perché il buffer può
+   essere riusato con un W diverso. */
+let _sI=null,_sI2=null,_sCap=0;
+function sauvola(d, W, H, k){
+  k = k||0.34;
+  const r = Math.max(8, Math.min(32, Math.round(H/8)));   // finestra ~ altezza glifo MRZ
+  const w1=W+1, need=w1*(H+1);
+  if(need>_sCap){ _sI=new Float64Array(need); _sI2=new Float64Array(need); _sCap=need; }
+  const I=_sI, I2=_sI2;
+  for(let x=0;x<=W;x++){ I[x]=0; I2[x]=0; }
+  for(let y=0;y<=H;y++){ I[y*w1]=0; I2[y*w1]=0; }
+  for(let y=0;y<H;y++){
+    let rs=0, rs2=0; const io=(y+1)*w1, ip=y*w1, yo=y*W;
+    for(let x=0;x<W;x++){
+      const g=d[(yo+x)<<2];
+      rs+=g; rs2+=g*g;
+      I[io+x+1]=I[ip+x+1]+rs;
+      I2[io+x+1]=I2[ip+x+1]+rs2;
+    }
+  }
+  const R=128;
+  for(let y=0;y<H;y++){
+    const y0=Math.max(0,y-r), y1=Math.min(H-1,y+r);
+    for(let x=0;x<W;x++){
+      const x0=Math.max(0,x-r), x1=Math.min(W-1,x+r);
+      const area=(x1-x0+1)*(y1-y0+1);
+      const A=y0*w1+x0, B=y0*w1+(x1+1), C=(y1+1)*w1+x0, D=(y1+1)*w1+(x1+1);
+      const sum=I[D]-I[B]-I[C]+I[A], sum2=I2[D]-I2[B]-I2[C]+I2[A];
+      const mean=sum/area, variance=sum2/area-mean*mean;
+      const std=variance>0?Math.sqrt(variance):0;
+      const T=mean*(1+k*(std/R-1));
+      const idx=(y*W+x)<<2;
+      const v=d[idx]<T?0:255; d[idx]=d[idx+1]=d[idx+2]=v;
+    }
+  }
+}
 async function scanOnce(){ if(busy||found) return; busy=true;
   const vw=video.videoWidth,vh=video.videoHeight; if(!vw){busy=false;return;}
   // ritaglia ESATTAMENTE la porzione visibile nella fessura (object-fit: cover)
@@ -565,10 +609,10 @@ async function scanOnce(){ if(busy||found) return; busy=true;
   const sc=2; work.width=Math.round(sw*sc); work.height=Math.round(sh*sc);
   const ctx=work.getContext('2d');
   ctx.drawImage(video, sx,sy,sw,sh, 0,0, work.width, work.height);
-  const im=ctx.getImageData(0,0,work.width,work.height),d=im.data; let sum=0;
-  for(let i=0;i<d.length;i+=4){const g=0.3*d[i]+0.59*d[i+1]+0.11*d[i+2]; d[i]=d[i+1]=d[i+2]=g; sum+=g;}
-  const thr=(sum/(d.length/4))*0.92;
-  for(let i=0;i<d.length;i+=4){const v=d[i]<thr?0:255; d[i]=d[i+1]=d[i+2]=v;} ctx.putImageData(im,0,0);
+  const im=ctx.getImageData(0,0,work.width,work.height),d=im.data;
+  for(let i=0;i<d.length;i+=4){const g=0.3*d[i]+0.59*d[i+1]+0.11*d[i+2]; d[i]=d[i+1]=d[i+2]=g;}
+  sauvola(d, work.width, work.height);   // binarizzazione adattiva (vedi commento su sauvola())
+  ctx.putImageData(im,0,0);
   try{ const {data:{text}}=await worker.recognize(work); const r=tryParse(text);
     if(r && Object.values(r.checks).every(Boolean)){
       // documento scaduto: check digit ok ma data di scadenza passata -> rifiuta subito
