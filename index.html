@@ -643,7 +643,11 @@ async function startScan(){ setStatus("");
   found=false; votes={};
   if(ph) ph.textContent=tt("reading");
   $("scanline").style.display="block";
-  loop=setInterval(scanOnce,1200); }
+  // 500ms (era 1200): la guardia `busy` evita sovrapposizioni, quindi il ciclo
+  // diventa limitato dall'OCR (parte appena il frame precedente è pronto) invece
+  // che dall'intervallo -> meno tempo morto, lettura più rapida. La binarizzazione
+  // costa ~5-20ms/frame (trascurabile): il collo di bottiglia è l'OCR.
+  loop=setInterval(scanOnce,500); }
 function stopScan(keepProg){ clearInterval(loop); loop=null; const sl=$("scanline"); if(sl) sl.style.display="none";
   const slot=document.querySelector('.slot'); if(slot) slot.classList.remove('scanning');
   if(scanprog && !keepProg) scanprog.hidden=true;
