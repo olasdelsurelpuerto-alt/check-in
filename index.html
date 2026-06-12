@@ -144,6 +144,9 @@
               box-shadow:0 6px 18px rgba(255,107,53,.30); }
   button.ghost{ background:#efe2cb; color:var(--ink); flex:0 0 38%; box-shadow:none; }
   button.act:disabled{ opacity:.5; box-shadow:none; }
+  #startBtn{ padding:18px 13px; font-size:19.5px; letter-spacing:.5px; box-shadow:0 10px 30px rgba(255,107,53,.60); }
+  @keyframes pulse-cta{ 0%,100%{ box-shadow:0 10px 30px rgba(255,107,53,.60); } 50%{ box-shadow:0 12px 42px rgba(255,107,53,.88); } }
+  #startBtn:not(:disabled){ animation:pulse-cta 2s ease-in-out infinite; }
   #status{ font-size:13px; padding:11px 13px; border-radius:12px; background:#fff; border:1px solid var(--line); margin-top:12px; min-height:20px; color:var(--ink); }
   #status:empty{ display:none; }
   #status.ok{ background:#eaf7ef; border-color:#bfe0c8; } #status.warn{ background:#fff4e3; border-color:#f0c47a; }
