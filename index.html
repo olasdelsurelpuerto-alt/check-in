@@ -519,7 +519,7 @@ function scanProg(n){ if(!scanprog||n<=curProg) return; // mai indietro: monotò
   spans.forEach((s,i)=>{ s.classList.toggle("fill", i<n); s.classList.toggle("active", i===n && n<CONFIRM); s.classList.remove("done"); });
   if(n>curProg && n>0){ const seg=spans[n-1]; if(seg){ seg.classList.remove("pop"); void seg.offsetWidth; seg.classList.add("pop"); } } // evidenzia la fase appena completata
   curProg=n; }
-let worker=null, stream=null, busy=false, loop=null, found=false, votes={}; const CONFIRM=3;
+let worker=null, stream=null, busy=false, loop=null, found=false, votes={}, blurSkips=0; const CONFIRM=3, FOCUS_MIN=0.15; // metrica normalizzata (vedi focusMeasure): buoni >=0.51, spazzatura <=0.21; 0.15 = conservativa, nel dubbio il frame PASSA
 function setStatus(t,cls){ statusEl.textContent=t; statusEl.className=cls||""; }
 function val(c){ if(c>='0'&&c<='9')return c.charCodeAt(0)-48; if(c>='A'&&c<='Z')return c.charCodeAt(0)-55; return 0; }
 function cd(s){ const w=[7,3,1]; let x=0; for(let i=0;i<s.length;i++) x+=val(s[i])*w[i%3]; return x%10; }
@@ -557,6 +557,32 @@ function tryParse(t){ const L=mrzLines(t); const l44=L.filter(s=>s.length>=42);
   if(l44.length>=2) return parseTD3(l44[0].padEnd(44,'<').slice(0,44),l44[1].padEnd(44,'<').slice(0,44));
   const l30=L.filter(s=>s.length>=28&&s.length<=32);
   if(l30.length>=3) return parseTD1(...l30.slice(0,3).map(s=>s.padEnd(30,'<').slice(0,30))); return null; }
+/* Nitidezza NORMALIZZATA = Var(Laplaciano) / Var(grigio), su griglia dimezzata
+   con media 2x2. I tre accorgimenti sono tutti necessari (taratura 2026-06-12):
+   - media 2x2: il rumore del sensore gonfia il Laplaciano dei frame SFOCATI
+     (sfocato+rumore ~50 vs nitido ~78 sulla metrica ingenua: inseparabili);
+     mediare 4 pixel abbatte il rumore ~4x e i bordi dei glifi restano.
+   - normalizzazione per Var(grigio): l'energia dei bordi scala col contrasto,
+     un frame nitido ma SCURO scenderebbe sotto un sfocato ben illuminato.
+   - griglia dimezzata: meta' lavoro, stessa informazione (stroke MRZ ~3-4px).
+   Valori tarati sugli specimen: nitido 1.2, buono 0.51, buono-scuro 0.66,
+   appena-fuori-fuoco 0.36, spazzatura <=0.21, sfocato franco 0.07-0.003. */
+let _fG=null,_fCap=0;
+function focusMeasure(d, W, H){
+  const hw=W>>1, hh=H>>1, need=hw*hh;
+  if(need>_fCap){ _fG=new Float32Array(need); _fCap=need; }
+  const G=_fG;
+  for(let y=0;y<hh;y++){ const r0=(2*y*W)<<2, r1=((2*y+1)*W)<<2, o=y*hw;
+    for(let x=0;x<hw;x++){ const i0=r0+((2*x)<<2), i1=r1+((2*x)<<2);
+      G[o+x]=(d[i0]+d[i0+4]+d[i1]+d[i1+4])*0.25; } }
+  let s=0,s2=0,gs=0,gs2=0,n=0;
+  for(let y=1;y<hh-1;y++){ const o=y*hw;
+    for(let x=1;x<hw-1;x++){ const g=G[o+x];
+      const L=4*g-G[o+x-1]-G[o+x+1]-G[o+x-hw]-G[o+x+hw];
+      s+=L; s2+=L*L; gs+=g; gs2+=g*g; n++; } }
+  const m=s/n, vL=s2/n-m*m, gm=gs/n, vG=gs2/n-gm*gm;
+  return vL/Math.max(vG,1);
+}
 /* Binarizzazione ADATTIVA (Sauvola, via integral image).
    Perché: la vecchia soglia GLOBALE (mean*0.92) regge solo MRZ su fondo chiaro e
    uniforme (es. passaporto peruviano). Su pagine in policarbonato lucido con sfondo
@@ -609,11 +635,22 @@ async function scanOnce(){ if(busy||found) return; busy=true;
   let sx,sy,sw,sh;
   if(vA>elA){ sh=vh; sw=vh*elA; sx=(vw-sw)/2; sy=0; }
   else      { sw=vw; sh=vw/elA; sx=0; sy=(vh-sh)/2; }
-  const sc=2; work.width=Math.round(sw*sc); work.height=Math.round(sh*sc);
+  // canvas OCR a larghezza ~costante (cap 1280px): con camera 640px equivale al
+  // vecchio upscale 2x; con camera HD (vedi constraints in startScan) si fa il
+  // DOWNSCALE da pixel reali -> piu' dettaglio vero a parita' di costo OCR.
+  const sc=Math.min(2, 1280/sw); work.width=Math.round(sw*sc); work.height=Math.round(sh*sc);
   const ctx=work.getContext('2d');
   ctx.drawImage(video, sx,sy,sw,sh, 0,0, work.width, work.height);
   const im=ctx.getImageData(0,0,work.width,work.height),d=im.data;
   for(let i=0;i<d.length;i+=4){const g=0.3*d[i]+0.59*d[i+1]+0.11*d[i+2]; d[i]=d[i+1]=d[i+2]=g;}
+  // GATE DI NITIDEZZA: scarta i frame fuori fuoco PRIMA dell'OCR. Un frame
+  // sfocato costa comunque centinaia di ms di recognize() e produce solo
+  // spazzatura che ritarda il consenso CONFIRM; la metrica costa ~2ms.
+  // Valvola di sfogo: dopo 6 scarti consecutivi un frame passa comunque ->
+  // se la camera non mette mai a fuoco si torna al comportamento di prima
+  // (mai un blocco totale). FOCUS_MIN tarata sugli specimen (nitido >>, sfocato <<).
+  if(focusMeasure(d, work.width, work.height)<FOCUS_MIN && ++blurSkips<6){ busy=false; return; }
+  blurSkips=0;
   sauvola(d, work.width, work.height);   // binarizzazione adattiva (vedi commento su sauvola())
   ctx.putImageData(im,0,0);
   try{ const {data:{text}}=await worker.recognize(work); const r=tryParse(text);
@@ -637,13 +674,16 @@ async function startScan(){ setStatus("");
   // mostra subito la barra (fase 0 con shimmer) + frase "preparando", niente box bianco
   scanprog.hidden=false; scanprog.classList.remove("ok"); curProg=-1; scanProg(0);
   const ph=$("t_scanphrase"); if(ph) ph.textContent=tt("loading");
-  try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}}); }
+  // width/height "ideal" (mai "exact": non fallisce su nessun telefono): senza
+  // vincoli molti browser danno 640x480 e i glifi MRZ arrivano all'OCR minuscoli;
+  // cosi' la camera fornisce il massimo disponibile fino a 1920x1080.
+  try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}}); }
   catch(e){ scanprog.hidden=true; setStatus((LANG=="es"?"Cámara no disponible. Abre el enlace en Safari/Chrome. ":"Camera unavailable. Open the link in Safari/Chrome. ")+e.message,"warn"); return; }
   video.srcObject=stream; await video.play();
   document.querySelector('.slot').classList.add('scanning');
   if(!worker){ worker=await Tesseract.createWorker('mrz',1,{langPath:'.',workerPath:'./vendor/worker.min.js',corePath:'./vendor'});
     await worker.setParameters({tessedit_char_whitelist:'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ<',tessedit_pageseg_mode:'6'}); }
-  found=false; votes={};
+  found=false; votes={}; blurSkips=0;
   if(ph) ph.textContent=tt("reading");
   $("scanline").style.display="block";
   // 500ms (era 1200): la guardia `busy` evita sovrapposizioni, quindi il ciclo

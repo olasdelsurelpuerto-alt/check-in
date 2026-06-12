@@ -15,6 +15,9 @@
 # screenshot/snapshot generati durante i test
 /.playwright-mcp/
 
+# harness E2E locale (camera finta Chromium + frame generati)
+/test_e2e/
+
 # QR del check-in (asset locale)
 /qr_checkin.png
 /qr_checkin.svg
