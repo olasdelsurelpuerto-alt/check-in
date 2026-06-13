@@ -519,7 +519,7 @@ function scanProg(n){ if(!scanprog||n<=curProg) return; // mai indietro: monotò
   spans.forEach((s,i)=>{ s.classList.toggle("fill", i<n); s.classList.toggle("active", i===n && n<CONFIRM); s.classList.remove("done"); });
   if(n>curProg && n>0){ const seg=spans[n-1]; if(seg){ seg.classList.remove("pop"); void seg.offsetWidth; seg.classList.add("pop"); } } // evidenzia la fase appena completata
   curProg=n; }
-let worker=null, stream=null, busy=false, loop=null, found=false, votes={}, blurSkips=0, pfDoc=null, pfDob=null, pfExp=null, pfNames={}; const CONFIRM=3, FOCUS_MIN=0.15; // metrica normalizzata (vedi focusMeasure): buoni >=0.51, spazzatura <=0.21; 0.15 = conservativa, nel dubbio il frame PASSA
+let worker=null, stream=null, busy=false, loop=null, found=false, votes={}, blurSkips=0; const CONFIRM=3, FOCUS_MIN=0.15; // metrica normalizzata (vedi focusMeasure): buoni >=0.51, spazzatura <=0.21; 0.15 = conservativa, nel dubbio il frame PASSA
 function setStatus(t,cls){ statusEl.textContent=t; statusEl.className=cls||""; }
 function val(c){ if(c>='0'&&c<='9')return c.charCodeAt(0)-48; if(c>='A'&&c<='Z')return c.charCodeAt(0)-55; return 0; }
 function cd(s){ const w=[7,3,1]; let x=0; for(let i=0;i<s.length;i++) x+=val(s[i])*w[i%3]; return x%10; }
@@ -654,31 +654,6 @@ async function scanOnce(){ if(busy||found) return; busy=true;
   sauvola(d, work.width, work.height);   // binarizzazione adattiva (vedi commento su sauvola())
   ctx.putImageData(im,0,0);
   try{ const {data:{text}}=await worker.recognize(work); const r=tryParse(text);
-    // CONSENSO PER-CAMPO (solo TD3/passaporto): i campi con check-digit (n.doc, nascita,
-    // scadenza) si auto-verificano -> li BLOCCO appena IL LORO check passa, anche da frame
-    // DIVERSI; nomi/naz./sesso non hanno check-digit -> restano a ripetizione (CONFIRM volte).
-    // Conferma = i 3 campi check-validi bloccati + nomi ripetuti -> combina il meglio di frame
-    // diversi (un campo rovinato dal riflesso in alcuni frame si legge bene in altri). Il DNI
-    // (TD1) NON passa di qui: percorso prioritario invariato.
-    if(r && r.fmt==='TD3'){
-      dbg.textContent=text;
-      if(r.checks.doc) pfDoc=r.docnum;
-      if(r.checks.dob) pfDob=r.dob;
-      if(r.checks.exp) pfExp=r.exp;
-      const nk=JSON.stringify([r.given,r.surname,r.nat,r.sex]);
-      pfNames[nk]=(pfNames[nk]||0)+1;
-      const nb=Math.max(...Object.values(pfNames));
-      if(pfDoc&&pfDob&&pfExp&&nb>=CONFIRM){
-        const [g,s,nat,sx]=JSON.parse(Object.entries(pfNames).sort((a,b)=>b[1]-a[1])[0][0]);
-        const merged={fmt:'TD3',surname:s,given:g,docnum:pfDoc,dob:pfDob,exp:pfExp,sex:sx,nat,
-                      checks:{doc:true,dob:true,exp:true,comp:true}};
-        if(merged.exp && expISO(merged.exp) < todayISO()){
-          found=true; stopScan(); scanprog.hidden=true; setStatus(tt("doc_expired"),"warn"); busy=false; return; }
-        found=true; scanProg(CONFIRM); stopScan(); onScanned(merged); busy=false; return;
-      }
-      scanProg(Math.min(CONFIRM, Math.max(nb, (pfDoc?1:0)+(pfDob?1:0)+(pfExp?1:0))));
-      busy=false; return;
-    }
     if(r && Object.values(r.checks).every(Boolean)){
       // documento scaduto: check digit ok ma data di scadenza passata -> rifiuta subito
       if(r.exp && expISO(r.exp) < todayISO()){
@@ -708,7 +683,7 @@ async function startScan(){ setStatus("");
   document.querySelector('.slot').classList.add('scanning');
   if(!worker){ worker=await Tesseract.createWorker('mrz',1,{langPath:'.',workerPath:'./vendor/worker.min.js',corePath:'./vendor'});
     await worker.setParameters({tessedit_char_whitelist:'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ<',tessedit_pageseg_mode:'6'}); }
-  found=false; votes={}; blurSkips=0; pfDoc=null; pfDob=null; pfExp=null; pfNames={};
+  found=false; votes={}; blurSkips=0;
   if(ph) ph.textContent=tt("reading");
   $("scanline").style.display="block";
   // 500ms (era 1200): la guardia `busy` evita sovrapposizioni, quindi il ciclo
