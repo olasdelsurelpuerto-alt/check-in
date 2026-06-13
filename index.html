@@ -693,7 +693,11 @@ async function scanOnce(){ if(busy||found) return; busy=true;
                                 r.es?[r.es.ap1,r.es.ap2,r.es.nif,r.es.soporte]:0]);
       votes[sig]=(votes[sig]||0)+1;
       const best=Math.max(...Object.values(votes)); // progresso MONOTONO (max raggiunto)
-      if(best>=CONFIRM){ found=true; scanProg(CONFIRM); stopScan(); onScanned(r); }
+      // TD3/passaporto: i 4 check-digit auto-verificano gia' doc/nascita/scadenza e il
+      // passaporto lucido fatica a stare a fuoco -> bastano 2 letture identiche (era 3).
+      // DNI/carte (TD1) restano a 3 (campi ESP soporte/nif non tutti coperti da check).
+      const need = r.fmt==='TD3' ? 2 : CONFIRM;
+      if(best>=need){ found=true; scanProg(CONFIRM); stopScan(); onScanned(r); }
       else scanProg(best);
     } else { if(curProg<0) scanProg(0); dbg.textContent=text; }
   }catch(e){ setStatus("OCR: "+e.message,"warn"); } busy=false; }
