@@ -46,14 +46,9 @@
   /* etichetta-guida dello scan piu' in evidenza */
   #t_scanlabel{ color:var(--ink); font-weight:600; }
   /* fessura-scanner: si inquadra SOLO il codice MRZ */
-  .slot{ position:relative; width:100%; aspect-ratio:3/1; border-radius:14px; transition:aspect-ratio .35s ease;
+  .slot{ position:relative; width:100%; aspect-ratio:3/1; border-radius:14px;
          background:radial-gradient(120% 140% at 50% 0%, #0e2c43 0%, #071a28 70%, #04101a 100%);
          overflow:hidden; box-shadow:0 6px 20px rgba(27,108,168,.25); }
-  /* Passaporto (TD3, 2 righe da 44): riquadro piu' piatto/largo. Attivato in
-     automatico quando lo scanner rileva una MRZ a 2 righe lunghe (vedi scanOnce):
-     cosi' i 44 caratteri riempiono la larghezza -> glifi piu' grandi, lettura piu'
-     veloce. Specificita' .slot.passport > .slot -> vince anche sul mobile (5/2). */
-  .slot.passport{ aspect-ratio:9/2; }
   .slot video{ width:100%; height:100%; object-fit:cover; }
   .frame{ position:absolute; inset:0; pointer-events:none; }
   .corner{ position:absolute; width:26px; height:26px; border:3px solid var(--ocean2); opacity:.95;
@@ -524,7 +519,7 @@ function scanProg(n){ if(!scanprog||n<=curProg) return; // mai indietro: monotò
   spans.forEach((s,i)=>{ s.classList.toggle("fill", i<n); s.classList.toggle("active", i===n && n<CONFIRM); s.classList.remove("done"); });
   if(n>curProg && n>0){ const seg=spans[n-1]; if(seg){ seg.classList.remove("pop"); void seg.offsetWidth; seg.classList.add("pop"); } } // evidenzia la fase appena completata
   curProg=n; }
-let worker=null, stream=null, busy=false, loop=null, found=false, votes={}, blurSkips=0, passportMode=false, td3hits=0; const CONFIRM=3, FOCUS_MIN=0.15; // metrica normalizzata (vedi focusMeasure): buoni >=0.51, spazzatura <=0.21; 0.15 = conservativa, nel dubbio il frame PASSA
+let worker=null, stream=null, busy=false, loop=null, found=false, votes={}, blurSkips=0; const CONFIRM=3, FOCUS_MIN=0.15; // metrica normalizzata (vedi focusMeasure): buoni >=0.51, spazzatura <=0.21; 0.15 = conservativa, nel dubbio il frame PASSA
 function setStatus(t,cls){ statusEl.textContent=t; statusEl.className=cls||""; }
 function val(c){ if(c>='0'&&c<='9')return c.charCodeAt(0)-48; if(c>='A'&&c<='Z')return c.charCodeAt(0)-55; return 0; }
 function cd(s){ const w=[7,3,1]; let x=0; for(let i=0;i<s.length;i++) x+=val(s[i])*w[i%3]; return x%10; }
@@ -659,16 +654,6 @@ async function scanOnce(){ if(busy||found) return; busy=true;
   sauvola(d, work.width, work.height);   // binarizzazione adattiva (vedi commento su sauvola())
   ctx.putImageData(im,0,0);
   try{ const {data:{text}}=await worker.recognize(work); const r=tryParse(text);
-    // AUTO-SWITCH passaporto: appena la STRUTTURA MRZ e' 2 righe lunghe (~44 = TD3)
-    // passo il riquadro in modalita' passaporto (piu' piatto/largo); il crop segue
-    // la forma dello slot, quindi si adatta da solo. Scatta su STRUTTURA, non su
-    // parse valido (il passaporto si STRUTTURA bene anche quando legge male). Solo
-    // DNI->passaporto, dopo 2 rilevazioni: il DNI ha righe da 30, non scatta mai.
-    if(!passportMode){
-      if(mrzLines(text).filter(s=>s.length>=40).length>=2){
-        if(++td3hits>=2){ passportMode=true; document.querySelector('.slot').classList.add('passport'); }
-      } else td3hits=0;
-    }
     if(r && Object.values(r.checks).every(Boolean)){
       // documento scaduto: check digit ok ma data di scadenza passata -> rifiuta subito
       if(r.exp && expISO(r.exp) < todayISO()){
@@ -698,8 +683,7 @@ async function startScan(){ setStatus("");
   document.querySelector('.slot').classList.add('scanning');
   if(!worker){ worker=await Tesseract.createWorker('mrz',1,{langPath:'.',workerPath:'./vendor/worker.min.js',corePath:'./vendor'});
     await worker.setParameters({tessedit_char_whitelist:'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ<',tessedit_pageseg_mode:'6'}); }
-  found=false; votes={}; blurSkips=0; passportMode=false; td3hits=0;
-  document.querySelector('.slot').classList.remove('passport');
+  found=false; votes={}; blurSkips=0;
   if(ph) ph.textContent=tt("reading");
   $("scanline").style.display="block";
   // 500ms (era 1200): la guardia `busy` evita sovrapposizioni, quindi il ciclo
