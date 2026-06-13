@@ -519,7 +519,8 @@ function scanProg(n){ if(!scanprog||n<=curProg) return; // mai indietro: monotò
   spans.forEach((s,i)=>{ s.classList.toggle("fill", i<n); s.classList.toggle("active", i===n && n<CONFIRM); s.classList.remove("done"); });
   if(n>curProg && n>0){ const seg=spans[n-1]; if(seg){ seg.classList.remove("pop"); void seg.offsetWidth; seg.classList.add("pop"); } } // evidenzia la fase appena completata
   curProg=n; }
-let worker=null, stream=null, busy=false, loop=null, found=false, votes={}, blurSkips=0; const CONFIRM=3, FOCUS_MIN=0.15; // metrica normalizzata (vedi focusMeasure): buoni >=0.51, spazzatura <=0.21; 0.15 = conservativa, nel dubbio il frame PASSA
+let worker=null, stream=null, busy=false, loop=null, found=false, votes={}, blurSkips=0; const CONFIRM=3, FOCUS_MIN=0.15;
+const DEBUG=/[?&]debug\b/.test(location.search); let dbgLog=[];   // modalita' diagnostica: solo con ?debug=1, invisibile agli ospiti // metrica normalizzata (vedi focusMeasure): buoni >=0.51, spazzatura <=0.21; 0.15 = conservativa, nel dubbio il frame PASSA
 function setStatus(t,cls){ statusEl.textContent=t; statusEl.className=cls||""; }
 function val(c){ if(c>='0'&&c<='9')return c.charCodeAt(0)-48; if(c>='A'&&c<='Z')return c.charCodeAt(0)-55; return 0; }
 function cd(s){ const w=[7,3,1]; let x=0; for(let i=0;i<s.length;i++) x+=val(s[i])*w[i%3]; return x%10; }
@@ -627,6 +628,30 @@ function sauvola(d, W, H, k){
     }
   }
 }
+/* MODALITA' DEBUG (solo con ?debug=1 nell'URL): registra per ogni frame la lettura
+   GREZZA dell'OCR + quali check-digit passano, in un pannello copiabile a fondo
+   schermo. Invisibile agli ospiti (non usano ?debug). Serve a catturare cosa legge
+   DAVVERO lo scanner su un passaporto reale e capire il vero punto debole. */
+function dbgPush(tag,checks,raw){ dbgLog.unshift({tag,checks,raw}); if(dbgLog.length>20) dbgLog.pop(); renderDbg(); }
+function dbgText(){ return dbgLog.map((e,i)=>{
+    const c=e.checks?(' doc'+(e.checks.doc?'OK':'X')+' dob'+(e.checks.dob?'OK':'X')+' exp'+(e.checks.exp?'OK':'X')+' comp'+(e.checks.comp?'OK':'X')):'';
+    return `#${dbgLog.length-i} ${e.tag}${c}\n  `+e.raw.join('\n  ');
+  }).join('\n'); }
+function renderDbg(){
+  let p=document.getElementById('dbgpanel');
+  if(!p){ p=document.createElement('div'); p.id='dbgpanel';
+    p.style.cssText='position:fixed;left:0;right:0;bottom:0;max-height:46vh;overflow:auto;background:rgba(7,26,40,.96);color:#bfe9f2;font:11px/1.45 ui-monospace,monospace;padding:8px 10px;z-index:99999;white-space:pre-wrap';
+    const b=document.createElement('button'); b.type='button'; b.textContent='Copia log';
+    b.style.cssText='position:sticky;top:0;float:right;background:#FF6B35;color:#fff;border:0;border-radius:6px;padding:6px 11px;font:600 12px sans-serif;margin-bottom:6px';
+    b.onclick=()=>{ const t=dbgText();
+      const done=()=>{ b.textContent='Copiato ✓'; setTimeout(()=>b.textContent='Copia log',1200); };
+      if(navigator.clipboard) navigator.clipboard.writeText(t).then(done).catch(()=>{});
+      else { const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');}catch(e){} ta.remove(); done(); } };
+    p.appendChild(b); const pre=document.createElement('div'); pre.id='dbgpre'; p.appendChild(pre);
+    document.body.appendChild(p);
+  }
+  document.getElementById('dbgpre').textContent=dbgText();
+}
 async function scanOnce(){ if(busy||found) return; busy=true;
   const vw=video.videoWidth,vh=video.videoHeight; if(!vw){busy=false;return;}
   // ritaglia ESATTAMENTE la porzione visibile nella fessura (object-fit: cover)
@@ -649,11 +674,13 @@ async function scanOnce(){ if(busy||found) return; busy=true;
   // Valvola di sfogo: dopo 6 scarti consecutivi un frame passa comunque ->
   // se la camera non mette mai a fuoco si torna al comportamento di prima
   // (mai un blocco totale). FOCUS_MIN tarata sugli specimen (nitido >>, sfocato <<).
-  if(focusMeasure(d, work.width, work.height)<FOCUS_MIN && ++blurSkips<6){ busy=false; return; }
+  const _fm=focusMeasure(d, work.width, work.height);
+  if(_fm<FOCUS_MIN && ++blurSkips<6){ if(DEBUG) dbgPush('SKIP fm='+_fm.toFixed(2), null, ['(fuori fuoco, niente OCR)']); busy=false; return; }
   blurSkips=0;
   sauvola(d, work.width, work.height);   // binarizzazione adattiva (vedi commento su sauvola())
   ctx.putImageData(im,0,0);
   try{ const {data:{text}}=await worker.recognize(work); const r=tryParse(text);
+    if(DEBUG) dbgPush('fm='+_fm.toFixed(2)+' '+(r?r.fmt:'no-parse'), r?r.checks:null, text.trim().split('\n'));
     if(r && Object.values(r.checks).every(Boolean)){
       // documento scaduto: check digit ok ma data di scadenza passata -> rifiuta subito
       if(r.exp && expISO(r.exp) < todayISO()){
@@ -683,7 +710,7 @@ async function startScan(){ setStatus("");
   document.querySelector('.slot').classList.add('scanning');
   if(!worker){ worker=await Tesseract.createWorker('mrz',1,{langPath:'.',workerPath:'./vendor/worker.min.js',corePath:'./vendor'});
     await worker.setParameters({tessedit_char_whitelist:'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ<',tessedit_pageseg_mode:'6'}); }
-  found=false; votes={}; blurSkips=0;
+  found=false; votes={}; blurSkips=0; if(DEBUG) dbgLog=[];
   if(ph) ph.textContent=tt("reading");
   $("scanline").style.display="block";
   // 500ms (era 1200): la guardia `busy` evita sovrapposizioni, quindi il ciclo
