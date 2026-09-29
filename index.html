@@ -1,1 +1,42 @@
-$file:/workspace/sandbox/cli/checkin-send-fix-2026-09-29/work/index-patched.html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Check-in OlasDelSur</title>
+<script>
+(async function () {
+  try {
+    var urls = [
+      'https://raw.githubusercontent.com/olasdelsurelpuerto-alt/check-in/9c2ddcca5212d7c1cb24219fb210de0dda5e43b1/index.html',
+      'https://cdn.jsdelivr.net/gh/olasdelsurelpuerto-alt/check-in@9c2ddcca5212d7c1cb24219fb210de0dda5e43b1/index.html'
+    ];
+    var html = null;
+    for (var i = 0; i < urls.length; i++) {
+      try {
+        var r = await fetch(urls[i], { cache: 'no-store' });
+        if (r.ok) { html = await r.text(); if (html && html.indexOf('<!DOCTYPE') === 0) break; }
+      } catch (e) {}
+    }
+    if (!html) throw new Error('restore fetch failed');
+    // Point PROXY to the fresh Apps Script deploy without rewriting the whole file
+    html = html.replace(
+      /const PROXY_ACTION="https:\/\/script\.google\.com\/macros\/s\/[^"]+\/exec"/,
+      'const PROXY_ACTION="https://script.google.com/macros/s/AKfycbzf8QXHiPHzz6VmeXBDPC1Gv8dAEufGW4QR_OF3LN4pkldrJutvB9c_WyDT5GK4QeIc/exec"'
+    );
+    // Anti-duplicati send(): replace only the pinned send() body (scanner/OCR/Tesseract/camera untouched)
+    var OLD_SEND = "async function send(){\n  const g=G.data, btn=$(\"rv_send\"), err=$(\"e_send\");\n  btn.disabled=true; err.classList.remove(\"show\");\n  const prev=btn.textContent; btn.textContent=tt(\"sending\");\n  let ok=false;\n  if(PROXY_ACTION){\n    // via proxy: risposta leggibile {ok:true} = riga davvero salvata. 3 tentativi con backoff.\n    // body senza Content-Type custom -> \"simple request\", niente preflight CORS (Apps Script non gestisce OPTIONS)\n    const body=JSON.stringify(Object.fromEntries(buildFormData(g)));\n    for(let i=0;i<3&&!ok;i++){\n      if(i) await new Promise(r=>setTimeout(r,1500*i));\n      try{ const res=await fetch(PROXY_ACTION,{method:\"POST\",body});\n        ok=(await res.json()).ok===true; }catch(e){}\n    }\n  }else{\n    // legacy diretto al Form: la risposta e' opaca (no-cors) -> si assume ok se la rete non fallisce\n    try{ await fetch(FORM_ACTION,{method:\"POST\",mode:\"no-cors\",\n        headers:{\"Content-Type\":\"application/x-www-form-urlencoded\"},\n        body:buildFormData(g).toString()}); ok=true; }catch(e){}\n  }\n  btn.textContent=prev;\n  if(ok) showScreen(\"screen-done\",4);\n  else{ // fallback visibile: l'ospite riprova o mostra questa schermata (con tutti i dati) all'host\n    btn.disabled=false; err.textContent=tt(\"send_err\"); err.classList.add(\"show\");\n    err.scrollIntoView({behavior:\"smooth\",block:\"center\"});\n  }\n}";
+    var NEW_SEND = "let sendInFlight=false;\nasync function send(){\n  if(sendInFlight) return;\n  const g=G.data, btn=$(\"rv_send\"), err=$(\"e_send\");\n  sendInFlight=true;\n  btn.disabled=true; err.classList.remove(\"show\");\n  const prev=btn.textContent; btn.textContent=tt(\"sending\");\n  let ok=false;\n  if(PROXY_ACTION){\n    // via proxy: {ok:true} = riga salvata. Anti-duplicati: requestId + 1 tentativo\n    // + al massimo 1 retry SOLO su errore di rete prima di una risposta.\n    // Timeout/Abort dopo POST = esito ambiguo \u2192 NON ritentare cieco.\n    // ok:false business \u2192 NON ritentare. Body senza Content-Type custom (simple request / no preflight).\n    const requestId=(crypto.randomUUID?crypto.randomUUID():(\"r\"+Date.now().toString(36)+Math.random().toString(36).slice(2,10)));\n    const body=JSON.stringify(Object.assign(Object.fromEntries(buildFormData(g)),{requestId:requestId}));\n    const SEND_TIMEOUT_MS=22000;\n    let attempt=0, allowRetry=false;\n    while(attempt<2 && !ok && (attempt===0 || allowRetry)){\n      if(attempt) await new Promise(r=>setTimeout(r,1500));\n      allowRetry=false;\n      const ac=new AbortController();\n      const timer=setTimeout(function(){ ac.abort(); }, SEND_TIMEOUT_MS);\n      try{\n        const res=await fetch(PROXY_ACTION,{method:\"POST\",body:body,signal:ac.signal});\n        let data=null;\n        try{ data=await res.json(); }catch(je){ data=null; }\n        if(data && data.ok===true) ok=true;\n        // JSON ok:false o body non-JSON dopo risposta HTTP \u2192 niente retry (esito noto o ambiguo post-POST)\n      }catch(e){\n        const aborted=e && (e.name===\"AbortError\" || (typeof DOMException!==\"undefined\" && e instanceof DOMException && e.name===\"AbortError\"));\n        // Abort/timeout: il POST puo' essere gia' arrivato al proxy \u2192 NON ritentare.\n        // Errore rete tipico (TypeError) prima di una risposta \u2192 un solo retry consentito.\n        if(!aborted) allowRetry=true;\n      }finally{ clearTimeout(timer); }\n      attempt++;\n    }\n  }else{\n    // legacy diretto al Form: la risposta e' opaca (no-cors) -> si assume ok se la rete non fallisce\n    try{ await fetch(FORM_ACTION,{method:\"POST\",mode:\"no-cors\",\n        headers:{\"Content-Type\":\"application/x-www-form-urlencoded\"},\n        body:buildFormData(g).toString()}); ok=true; }catch(e){}\n  }\n  btn.textContent=prev;\n  if(ok) showScreen(\"screen-done\",4);\n  else{ // fallback visibile: l'ospite riprova o mostra questa schermata (con tutti i dati) all'host\n    sendInFlight=false;\n    btn.disabled=false; err.textContent=tt(\"send_err\"); err.classList.add(\"show\");\n    err.scrollIntoView({behavior:\"smooth\",block:\"center\"});\n  }\n}";
+    if (html.indexOf(OLD_SEND) === -1) throw new Error('send() patch target missing');
+    html = html.replace(OLD_SEND, NEW_SEND);
+    document.open();
+    document.write(html);
+    document.close();
+  } catch (e) {
+    document.body.innerHTML = '<p style="font-family:sans-serif;padding:24px">Check-in temporalmente no disponible. Recarga en unos segundos.</p>';
+  }
+})();
+</script>
+</head>
+<body style="font-family:sans-serif;padding:24px">Cargando check-in…</body>
+</html>
