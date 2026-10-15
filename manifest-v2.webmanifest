@@ -1,8 +1,8 @@
 {
-  "id": "/check-in/",
-  "name": "Check-in OlasDelSur",
-  "short_name": "Check-in",
-  "start_url": "/check-in/",
+  "id": "/check-in/?app=scan-v2",
+  "name": "Check-in Scan",
+  "short_name": "Check-in Scan",
+  "start_url": "/check-in/?source=pwa",
   "scope": "/check-in/",
   "display": "standalone",
   "background_color": "#fce8cd",
